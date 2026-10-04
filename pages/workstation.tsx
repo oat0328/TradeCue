@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Bell,
   BookOpen,
   BriefcaseBusiness,
   CandlestickChart,
@@ -326,7 +325,6 @@ export default function WorkstationPage() {
         </div>
 
         <div className={styles.topActions}>
-          <button className={styles.iconButton} aria-label="Notifications"><Bell size={17}/></button>
           <div className={styles.accountMini}>
             <small>Buying Power</small><strong>{money(account?.balance.buyingPower)}</strong>
           </div>
