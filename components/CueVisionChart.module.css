@@ -4,7 +4,7 @@
 .source{font-size:10px;letter-spacing:.1em;color:var(--primary);padding:6px;border:1px solid var(--border);border-radius:5px}
 .zones,.indicators{display:flex;gap:4px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border);align-items:center}
 .indicators>span{color:var(--muted-foreground);font:600 10px/1 var(--font-family-monospace);letter-spacing:.08em;margin-right:4px}
-.svg{display:block;width:100%;height:auto;min-height:210px;cursor:crosshair;touch-action:pan-y;user-select:none}
+.svg{display:block;width:100%;height:auto;min-height:500px;max-height:720px;cursor:crosshair;touch-action:pan-y;user-select:none;background:radial-gradient(circle at 50% 20%,color-mix(in srgb,var(--primary) 3%,transparent),transparent 48%);border-radius:10px}
 .svg:focus{outline:1px solid var(--primary)}
 .axis{fill:var(--muted-foreground);font-family:var(--font-family-monospace),monospace;font-size:11px}
 .zoneText{fill:var(--primary);font-size:9px}
@@ -12,6 +12,15 @@
 .entryBand{fill:var(--primary);opacity:.09;stroke:var(--primary);stroke-width:1;stroke-dasharray:5 4}
 .stopLine{stroke:var(--error);stroke-width:1.5;stroke-dasharray:6 4}
 .targetLine{stroke:var(--success);stroke-width:1.2;stroke-dasharray:6 4}
+.supportLine{stroke:color-mix(in srgb,var(--success) 75%,white);stroke-width:1.4;stroke-dasharray:10 5}
+.resistanceLine{stroke:color-mix(in srgb,var(--error) 78%,white);stroke-width:1.4;stroke-dasharray:10 5}
+.sessionHighLine,.sessionLowLine{stroke:var(--warning);stroke-width:1;stroke-dasharray:3 5;opacity:.78}
+.openingLine{stroke:var(--primary);stroke-width:1;stroke-dasharray:2 5;opacity:.8}
+.extremeLine{stroke:color-mix(in srgb,var(--foreground) 45%,transparent);stroke-width:1;stroke-dasharray:1 6;opacity:.7}
+.rewardBox{fill:color-mix(in srgb,var(--success) 16%,transparent);stroke:color-mix(in srgb,var(--success) 55%,transparent);stroke-width:1}
+.riskBox{fill:color-mix(in srgb,var(--error) 15%,transparent);stroke:color-mix(in srgb,var(--error) 55%,transparent);stroke-width:1}
+.rewardText{fill:var(--success);font:700 10px var(--font-family-monospace)}
+.riskText{fill:var(--error);font:700 10px var(--font-family-monospace)}
 .levelText,.entryText{fill:var(--foreground);font-size:10px;font-family:var(--font-family-monospace),monospace}
 .entryText{fill:var(--primary)}
 .ema9,.ema20,.ema50,.ema200,.sma50,.sma200,.bollinger{fill:none;stroke-width:1.7;pointer-events:none}
@@ -32,6 +41,9 @@
 .indicatorReadouts span{padding:6px 8px;border:1px solid var(--border);border-radius:5px;color:var(--muted-foreground);font-size:11px;font-family:var(--font-family-monospace)}
 .indicatorReadouts strong{color:var(--foreground)}
 .hint{font-size:11px;color:var(--muted-foreground);line-height:1.7}
+.liveLesson{display:grid;grid-template-columns:.8fr .7fr .9fr 1.8fr;gap:.35rem;margin:.5rem 0 .65rem}
+.liveLesson span{display:grid;gap:.2rem;padding:.5rem .58rem;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));border-radius:.48rem;background:color-mix(in srgb,var(--primary) 3%,var(--background));color:var(--foreground);font:650 .57rem/1.2 var(--font-family-monospace)}
+.liveLesson b{color:var(--primary);font:600 .47rem/1 var(--font-family-base);letter-spacing:.07em}
 .empty{padding:48px 20px;text-align:center;color:var(--muted-foreground);border:1px dashed var(--border);border-radius:8px;margin-top:10px}
 .coach{padding:18px;border:1px solid var(--border);border-radius:10px;margin-top:14px;background:var(--background)}
 .coachHead{display:flex;justify-content:space-between;gap:16px}
@@ -53,9 +65,19 @@
 .coachFail strong{color:var(--error)}
 .currentRead{margin:.7rem 0 0!important;padding:.65rem .72rem;border-left:2px solid var(--primary);background:color-mix(in srgb,var(--primary) 4%,transparent);color:var(--muted-foreground)!important}
 .currentRead strong{color:var(--foreground)}
+.actionRead{margin:.45rem 0 0!important;padding:.65rem .72rem;border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));border-radius:.55rem;background:color-mix(in srgb,var(--primary) 3%,transparent);color:var(--muted-foreground)!important}
+.actionRead strong{color:var(--primary)}
+.chartReadStrip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.4rem;margin-top:.65rem}
+.chartReadStrip span{display:grid;gap:.2rem;padding:.55rem;border:1px solid var(--border);border-radius:.5rem;background:color-mix(in srgb,var(--background) 72%,transparent);min-width:0}
+.chartReadStrip b{color:var(--muted-foreground);font:500 .5rem/1 var(--font-family-base);text-transform:uppercase;letter-spacing:.05em}
+.chartReadStrip strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 .58rem/1.1 var(--font-family-monospace)}
+.candleTutor{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin-top:.75rem}
+.candleTutor div{display:grid;gap:.3rem;padding:.65rem;border:1px solid color-mix(in srgb,var(--warning) 18%,var(--border));border-radius:.55rem;background:color-mix(in srgb,var(--warning) 3%,var(--background))}
+.candleTutor b{color:var(--warning);font:750 .56rem/1 var(--font-family-monospace)}
+.candleTutor span{color:var(--muted-foreground);font-size:.58rem;line-height:1.45}
 .learnDetails{margin-top:.7rem;border-top:1px solid var(--border);padding-top:.65rem}
 .learnDetails summary{cursor:pointer;color:var(--muted-foreground);font:600 .62rem/1 var(--font-family-monospace);list-style:none}
 .learnDetails summary::-webkit-details-marker{display:none}
 .learnDetails[open] summary{margin-bottom:.65rem;color:var(--primary)}
-@media(max-width:720px){.coachChecks{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
+@media(max-width:1000px){.chartReadStrip{grid-template-columns:repeat(3,minmax(0,1fr))}.candleTutor{grid-template-columns:1fr 1fr}.svg{min-height:420px}}
+@media(max-width:720px){.coachChecks{grid-template-columns:repeat(2,minmax(0,1fr))}.chartReadStrip{grid-template-columns:1fr 1fr}.candleTutor{grid-template-columns:1fr}.liveLesson{grid-template-columns:1fr 1fr}.liveLesson span:last-child{grid-column:1/-1}.svg{min-height:330px}}
