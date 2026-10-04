@@ -417,7 +417,7 @@ export default function WorkstationPage() {
             </article>
             <article className={styles.actionTile}>
               <small>TradeCUE now</small>
-              <strong className={actionClass}>{actionHeadline}</strong>
+              <strong className={decisionActionClass}>{tradeDecision.headline}</strong>
               <span>{cueSignal.available ? "CUE " + cueSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
             </article>
             <article>
