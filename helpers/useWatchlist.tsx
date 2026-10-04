@@ -8,8 +8,9 @@ export function useWatchlist(enabled=true){
     queryKey:["watchlist"],
     queryFn:getWatchlist,
     enabled,
-    staleTime:10_000,
-    refetchInterval:20_000,
+    staleTime:30_000,
+    refetchInterval:60_000,
+    refetchIntervalInBackground:false,
     retry:false,
   });
   const mutate=useMutation({
