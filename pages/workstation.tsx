@@ -101,6 +101,26 @@ function marketSession(date = new Date()) {
   return {label:"OVERNIGHT", detail:"Eligible Webull 24/5 symbols", active:true};
 }
 
+function ptClock(date:Date){
+  return {
+    date:new Intl.DateTimeFormat("en-US",{timeZone:"America/Los_Angeles",weekday:"short",month:"short",day:"numeric"}).format(date),
+    time:new Intl.DateTimeFormat("en-US",{timeZone:"America/Los_Angeles",hour:"numeric",minute:"2-digit",second:"2-digit"}).format(date)+" PT",
+  };
+}
+
+function cutoffCountdown(date:Date,cutoff="12:30"){
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Los_Angeles",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(date);
+  const get=(type:string)=>Number(parts.find(part=>part.type===type)?.value??0);
+  const current=get("hour")*3600+get("minute")*60+get("second");
+  const [h,m]=cutoff.split(":").map(Number);
+  const target=h*3600+m*60;
+  const remaining=Math.max(0,target-current);
+  const hh=Math.floor(remaining/3600);
+  const mm=Math.floor((remaining%3600)/60);
+  const ss=remaining%60;
+  return {seconds:remaining,label:String(hh).padStart(2,"0")+"h "+String(mm).padStart(2,"0")+"m "+String(ss).padStart(2,"0")+"s"};
+}
+
 export default function WorkstationPage() {
   const { authState, logout } = useAuth();
   const isMember = authState.type === "authenticated";
