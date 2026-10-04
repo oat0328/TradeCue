@@ -2,7 +2,7 @@ import { apiUser, apiJson, apiFailure, ApiError } from "../../helpers/apiAccess"
 import { effectiveMembership } from "../../helpers/effectiveMembership";
 import { calculateCueSignal } from "../../helpers/cueSignal";
 import { userKeys, webullRead, webullRows } from "../../helpers/webullClient";
-import { webullBars } from "../../helpers/webullBars";
+import { webullBarsBySymbol } from "../../helpers/webullBars";
 import { classifyHunterCandidate } from "../../helpers/hunterRules";
 import { schema } from "./scan_GET.schema";
 
@@ -90,6 +90,20 @@ function score(signal:ReturnType<typeof calculateCueSignal>){
   return signal.available?signal.score:null;
 }
 
+function currentMarketMode(){
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());
+  const get=(type:string)=>parts.find(part=>part.type===type)?.value??"";
+  const weekday=get("weekday");
+  const total=Number(get("hour"))*60+Number(get("minute"));
+  if(weekday==="Sun"&&total>=20*60)return "OVERNIGHT";
+  if(weekday==="Sat"||weekday==="Sun"||(weekday==="Fri"&&total>=20*60))return "WEEKEND_PREP";
+  if(total<4*60)return "OVERNIGHT";
+  if(total<9*60+30)return "PREMARKET";
+  if(total<16*60)return "RTH";
+  if(total<20*60)return "AFTER_HOURS";
+  return "OVERNIGHT";
+}
+
 export async function handle(request:Request){
   try{
     const user=await apiUser(request);
@@ -100,6 +114,7 @@ export async function handle(request:Request){
 
     const input=schema.parse(Object.fromEntries(new URL(request.url).searchParams));
     const keys=await userKeys(user);
+    const marketMode=currentMarketMode();
 
     const loadActive=()=>webullRead(keys,"/market-data/screeners/top-actives/list",{
       category:"US_STOCK",
@@ -160,23 +175,28 @@ export async function handle(request:Request){
       })
       .slice(0,evaluationLimit);
 
-    const evaluated=await inBatches(filtered,3,async(row)=>{
-      const frameSpecs=[
-        {timeframe:"5m" as const,timespan:"M5",freshMinutes:20},
-        {timeframe:"15m" as const,timespan:"M15",freshMinutes:45},
-        {timeframe:"1H" as const,timespan:"M60",freshMinutes:180},
-      ];
+    const frameSpecs=[
+      {timeframe:"5m" as const,timespan:"M5",freshMinutes:20},
+      {timeframe:"15m" as const,timespan:"M15",freshMinutes:45},
+      {timeframe:"1H" as const,timespan:"M60",freshMinutes:180},
+    ];
+    const symbols=filtered.map(row=>row.symbol);
+    const frameMaps=await Promise.all(frameSpecs.map(async(spec)=>{
+      if(!symbols.length)return {};
+      const barsRaw=await webullRead(keys,"/market-data/stocks/bars/list",{},{
+        symbols,
+        category:"US_STOCK",
+        timespan:spec.timespan,
+        count:"100",
+        real_time_required:true,
+        trading_sessions:"OVN,PRE,RTH,ATH",
+      });
+      return webullBarsBySymbol(barsRaw);
+    }));
 
-      const frames:FrameResult[]=await Promise.all(frameSpecs.map(async(spec)=>{
-        const barsRaw=await webullRead(keys,"/market-data/stocks/bars/list",{},{
-          symbols:[row.symbol],
-          category:"US_STOCK",
-          timespan:spec.timespan,
-          count:"100",
-          real_time_required:true,
-          trading_sessions:"PRE,RTH,ATH",
-        });
-        const bars=webullBars(barsRaw).slice(-100);
+    const evaluated=filtered.map(row=>{
+      const frames:FrameResult[]=frameSpecs.map((spec,index)=>{
+        const bars=(frameMaps[index]?.[row.symbol]??[]).slice(-100);
         const latestBarTime=bars.at(-1)?.time??null;
         return {
           timeframe:spec.timeframe,
@@ -184,7 +204,7 @@ export async function handle(request:Request){
           latestBarTime,
           signal:calculateCueSignal(bars),
         };
-      }));
+      });
 
       const fast=frames[0],confirm=frames[1],context=frames[2];
       const fastSignal=fast.signal;
@@ -236,7 +256,8 @@ export async function handle(request:Request){
       ];
       if(row.relativeVolume!=null)whyNow.push("RVOL "+row.relativeVolume.toFixed(2)+"×");
       if(marketChangePercent!=null)whyNow.push("QQQ "+(marketChangePercent>=0?"+":"")+marketChangePercent.toFixed(2)+"%");
-      if(!fast.fresh)whyNow.push("5m data stale");
+      if(marketMode==="WEEKEND_PREP")whyNow.push("Weekend prep · rank only, no entry signal");
+      else if(!fast.fresh)whyNow.push("5m data stale");
 
       return {
         ...row,
@@ -280,6 +301,7 @@ export async function handle(request:Request){
       evaluatedCount:evaluated.length,
       generatedAt:new Date(),
       rows,
+      marketMode,
       marketContext:{symbol:"QQQ",changePercent:marketChangePercent},
       note:"Auto Hunt scans Webull every 60 seconds while the workstation is open. Entry Ready requires fresh 5m + 15m confirmation, acceptable 1H context, volume/setup quality and market context. It identifies opportunities, not guaranteed profits.",
     });
@@ -287,4 +309,3 @@ export async function handle(request:Request){
     return apiFailure(error);
   }
 }
-
