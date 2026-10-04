@@ -533,6 +533,8 @@ export default function WorkstationPage() {
                       marketChangePercent: intelligence.data.marketChangePercent,
                       action: intelligence.data.action,
                     } : null}
+                    marketActive={session.active}
+                    marketLabel={session.label}
                   />
 
                   <details className={styles.advancedDetails}>
