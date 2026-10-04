@@ -51,6 +51,7 @@ export type OutputType = {
   evaluatedCount:number;
   generatedAt:Date;
   rows:HunterRow[];
+  marketMode:"WEEKEND_PREP"|"OVERNIGHT"|"PREMARKET"|"RTH"|"AFTER_HOURS";
   marketContext:{symbol:"QQQ";changePercent:number|null};
   note:string;
 };
