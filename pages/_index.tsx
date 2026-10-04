@@ -98,23 +98,23 @@ export default function HomePage() {
           <div className={styles.heroTerminal}>
             <div className={styles.terminalTop}>
               <span>COMMAND CENTER</span>
-              <Badge variant="success">● MARKET OPEN</Badge>
+              <Badge variant="outline">PRODUCT PREVIEW</Badge>
             </div>
             <div className={styles.marketStrip}>
-              <div><small>S&P 500</small><strong>5,721.48</strong><span>+0.64%</span></div>
-              <div><small>NASDAQ</small><strong>18,208.32</strong><span>+0.82%</span></div>
-              <div><small>BTC</small><strong>$62,418</strong><span>+1.24%</span></div>
+              <div><small>SPY</small><strong>Webull</strong><span>after sign-in</span></div>
+              <div><small>QQQ</small><strong>Webull</strong><span>after sign-in</span></div>
+              <div><small>WATCHING</small><strong>Your list</strong><span>live when connected</span></div>
             </div>
             <div className={styles.tradePanel}>
               <div className={styles.chartHead}>
-                <div><small>CUE VISION • NVDA • 5m / 15m / 1h</small><strong>$135.42 <span>+1.63%</span></strong></div>
-                <Badge variant="success">GREEN + READY</Badge>
+                <div><small>CUE VISION • CONNECTED MARKET DATA</small><strong>Real prices after sign-in</strong></div>
+                <Badge variant="outline">WAITING FOR DATA</Badge>
               </div>
               <div className={styles.chart}>
                 <span className={styles.target}>TARGET 2</span>
                 <span className={styles.entry}>ENTRY ZONE</span>
                 <span className={styles.stop}>STOP</span>
-                <svg viewBox="0 0 720 260" role="img" aria-label="Example Cue Vision chart">
+                <svg viewBox="0 0 720 260" role="img" aria-label="Illustrative TradeCUE interface preview">
                   <path d="M0 208 C55 188 89 224 132 175 S206 182 248 148 S320 170 372 104 S462 121 518 88 S607 99 720 50" fill="none" stroke="var(--chart-color-1)" strokeWidth="5"/>
                   <path d="M0 223 C120 214 205 194 302 172 S494 135 720 102" fill="none" stroke="var(--chart-color-3)" strokeWidth="3" strokeDasharray="10 7"/>
                   <line x1="0" x2="720" y1="69" y2="69" stroke="var(--success)" strokeDasharray="7 7"/>
@@ -123,7 +123,7 @@ export default function HomePage() {
               </div>
               <div className={styles.aiNote}>
                 <BrainCircuit size={18} />
-                <div><strong>Professor Cue</strong><p>5m, 15m and 1h agree. Volume is expanding above VWAP, but daily resistance is nearby. Good setup — not a good place to chase.</p></div>
+                <div><strong>Professor Cue</strong><p>When Webull is connected, this panel explains the current chart, what confirms an entry, what blocks it, and where risk changes the decision.</p></div>
               </div>
             </div>
           </div>
