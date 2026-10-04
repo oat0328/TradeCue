@@ -199,6 +199,7 @@ export async function handle(request:Request){
     }));
 
     const evaluated=filtered.map(row=>{
+      const fastBars=(frameMaps[0]?.[row.symbol]??[]).slice(-24);
       const frames:FrameResult[]=frameSpecs.map((spec,index)=>{
         const bars=(frameMaps[index]?.[row.symbol]??[]).slice(-160);
         const latestBarTime=bars.at(-1)?.time??null;
@@ -287,6 +288,7 @@ export async function handle(request:Request){
           bullishFrames:constructiveFrames,
         },
         marketChangePercent,
+        sparkline:fastBars.map(bar=>bar.close).filter(value=>Number.isFinite(value)),
       };
     });
 
