@@ -19,12 +19,12 @@ function series(direction:1|-1,volume=1000):WebullBar[]{
 describe("calculateCueSignal",()=>{
   it("refuses to invent a signal from too little data",()=>{
     const result=calculateCueSignal(series(1).slice(0,20));
-    expect(result.available).toBeFalse();
+    expect(result.available).toBe(false);
   });
 
   it("returns documented component scores for sufficient bars",()=>{
     const result=calculateCueSignal(series(1));
-    expect(result.available).toBeTrue();
+    expect(result.available).toBe(true);
     if(!result.available)return;
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(100);
@@ -34,7 +34,7 @@ describe("calculateCueSignal",()=>{
 
   it("does not label a persistent downtrend as BUY",()=>{
     const result=calculateCueSignal(series(-1));
-    expect(result.available).toBeTrue();
+    expect(result.available).toBe(true);
     if(!result.available)return;
     expect(result.state).not.toBe("BUY");
   });
@@ -43,10 +43,10 @@ describe("calculateCueSignal",()=>{
     const bars=series(1);
     bars[bars.length-1]={...bars[bars.length-1],volume:0};
     const result=calculateCueSignal(bars);
-    expect(result.available).toBeTrue();
+    expect(result.available).toBe(true);
     if(!result.available)return;
     expect(result.metrics.relativeVolume).toBeGreaterThan(0);
-    expect(result.flags.some(flag=>flag.includes("completed non-zero bar"))).toBeTrue();
+    expect(result.flags.some(flag=>flag.includes("completed non-zero bar"))).toBe(true);
   });
 });
 
