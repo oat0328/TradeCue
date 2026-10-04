@@ -298,16 +298,29 @@ export default function WorkstationPage() {
         <Link to="/" className={styles.brand}>
           <span className={styles.logoMark}>///</span>
           <span>Trade<strong>CUE</strong></span>
+          <small>AI TRADING COPILOT</small>
         </Link>
 
-        <div className={styles.topStats}>
-          <span>Buying Power <strong>{money(account?.balance.buyingPower)}</strong></span>
-          <span>Account Equity <strong>{money(account?.balance.equity)}</strong></span>
-          <span>Day P&L <strong className={Number(account?.balance.dayPnl ?? 0) >= 0 ? styles.positive : undefined}>{money(account?.balance.dayPnl)}</strong></span>
+        <div className={styles.marketHeader}>
+          <div className={session.active?styles.marketOpen:styles.marketClosed}><span/>{session.label}</div>
+          <div className={styles.clockBlock}><small>{pt.date}</small><strong>{pt.time}</strong></div>
+          <div className={styles.exitTimer}>
+            <Clock3 size={18}/>
+            <div><small>Exit by {risk?.dayTradeFlatTimePt ?? "12:30"} PM PT</small><strong>{exitClock.seconds>0?exitClock.label:"CUT-OFF REACHED"}</strong></div>
+          </div>
+          <div className={styles.dailyRisk}>
+            <div><small>Daily Risk</small><strong>{money(String(dailyRiskUsed))} / {money(String(maxDailyLoss || 0))}</strong></div>
+            <div className={styles.riskTrack}><span style={{width:dailyRiskPercent+"%"}}/></div>
+            <em>{dailyRiskPercent}%</em>
+          </div>
         </div>
 
         <div className={styles.topActions}>
-          <Link to="/membership" className={styles.membershipLink}>Membership</Link>
+          <button className={styles.iconButton} aria-label="Notifications"><Bell size={17}/></button>
+          <div className={styles.accountMini}>
+            <small>Buying Power</small><strong>{money(account?.balance.buyingPower)}</strong>
+          </div>
+          <Link to="/membership" className={styles.membershipLink}>{plan.name}</Link>
           {isMember && (
             <Button
               variant="ghost"
@@ -317,7 +330,7 @@ export default function WorkstationPage() {
                 window.location.assign("/login");
               }}
             >
-              <LogOut size={15} /> Log out
+              <LogOut size={15} />
             </Button>
           )}
         </div>
@@ -327,9 +340,9 @@ export default function WorkstationPage() {
         <aside className={styles.sidebar}>
           <nav>
             <button onClick={() => scrollTo("command-center")} className={styles.activeNav}><LayoutDashboard size={17} /><span>Command Center</span></button>
-            <button onClick={() => scrollTo("watchlist")}><WalletCards size={17} /><span>Watchlist</span></button>
-            <button onClick={() => scrollTo("hunter")}><Radar size={17} /><span>Cue Hunter</span></button>
-            <button onClick={() => scrollTo("radar")}><Radar size={17} /><span>Current Signal</span></button>
+            <button onClick={() => scrollTo("hunter")}><Radar size={17} /><span>Money Hunter</span></button>
+            <button onClick={() => scrollTo("watchlist")}><WalletCards size={17} /><span>Watchlists</span></button>
+            <button onClick={() => scrollTo("position-monitor")}><Gauge size={17} /><span>Portfolio</span></button>
             <button onClick={() => scrollTo("vision")}><CandlestickChart size={17} /><span>Cue Vision</span></button>
             <button onClick={() => scrollTo("fundamentals")}><Newspaper size={17} /><span>Fundamental Intelligence</span></button>
             <button onClick={() => scrollTo("portfolio")}><WalletCards size={17} /><span>Portfolio & Webull</span></button>
@@ -447,8 +460,9 @@ export default function WorkstationPage() {
                 onAccount={(id) => setAccountId(id)}
                 className={styles.webullPanel}
               />
-              <CueHunterPanel
+              <OpportunityCommandStrip
                 enabled={Boolean(webull.account.data)}
+                buyingPower={Number(account?.balance.buyingPower ?? 0)}
                 maxRiskPerTrade={risk?.maxRiskPerTrade}
                 onOpenSymbol={(nextSymbol) => {
                   setSymbol(nextSymbol);
