@@ -21,7 +21,7 @@ export function CueCheatSheet({
   symbol:string;
   timeframe:string;
   signal:CueSignal|CueSignalUnavailable;
-  action:"BUY"|"WAIT"|"HOLD"|"SELL"|null;
+  action:"BUY"|"WAIT"|"HOLD"|"SELL"|"AVOID"|null;
   fresh:boolean;
   hasPosition:boolean;
   intelligence?:{
@@ -43,8 +43,8 @@ export function CueCheatSheet({
     {label:"Fresh data",value:fresh?"LIVE":"STALE",pass:fresh},
   ];
 
-  const headline=action==="BUY"?"ENTRY READY":action==="SELL"?"EXIT REVIEW":action==="HOLD"?"HOLD / MANAGE":"DO NOT ENTER YET";
-  const variant=action==="BUY"||action==="HOLD"?"success":action==="SELL"?"destructive":"warning";
+  const headline=action==="BUY"?"ENTRY READY":action==="SELL"?"EXIT REVIEW":action==="AVOID"?"STAY AWAY":action==="HOLD"?"HOLD / MANAGE":"DO NOT ENTER YET";
+  const variant=action==="BUY"||action==="HOLD"?"success":action==="SELL"||action==="AVOID"?"destructive":"warning";
   const failed=checks.filter(check=>!check.pass).map(check=>check.label);
   const why=failed.length
     ? "Blocked by "+failed.join(", ")+"."
@@ -83,8 +83,7 @@ export function CueCheatSheet({
       <span><b>BUY</b> All core checks green + fresh data + MTF confirms</span>
       <span><b>WAIT</b> Any core check fails, data is stale, or price is extended</span>
       <span><b>HOLD</b> You own it and the setup remains constructive</span>
-      <span><b>EXIT</b> Position weakens into AVOID or your planned stop is threatened</span>
+      <span><b>STAY AWAY / EXIT</b> Avoid new longs when conditions are weak; review exits if already in the position</span>
     </div>
   </section>;
 }
-
