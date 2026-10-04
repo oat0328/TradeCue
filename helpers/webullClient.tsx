@@ -6,8 +6,8 @@ import { effectiveMembership } from "./effectiveMembership";
 
 export type WebullKeys = {appKey:string;appSecret:string};
 
-const webullGetCache = new Map<string,{expiresAt:number,value:unknown}>();
-const webullInFlight = new Map<string,Promise<unknown>>();
+const webullGetCache = new Map<string,{expiresAt:number,value:any}>();
+const webullInFlight = new Map<string,Promise<any>>();
 
 function webullCacheKey(keys:WebullKeys,path:string,query:Record<string,string>){
  const keyHash=createHash("sha256").update(keys.appKey).digest("hex").slice(0,12);
