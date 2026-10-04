@@ -25,11 +25,11 @@ export async function handle(request:Request){
         symbols:[position.symbol],
         category:"US_STOCK",
         timespan:"M5",
-        count:"100",
+        count:"160",
         real_time_required:true,
         trading_sessions:"PRE,RTH,ATH",
       });
-      const bars=webullBars(raw).slice(-100);
+      const bars=webullBars(raw).slice(-160);
       const signal=calculateCueSignal(bars);
       const latest=bars.at(-1);
       const age=latest?.time&&Number.isFinite(Date.parse(latest.time))
