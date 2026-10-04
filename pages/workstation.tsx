@@ -565,7 +565,7 @@ export default function WorkstationPage() {
                 timeframe={timeframe}
                 bars={webull.bars.data?.bars}
                 dataSource={chartReady ? "webull-paper" : "unavailable"}
-                levels={cueSignal.available && dataFresh && ["BUY","HOLD","SELL"].includes(displayedCue ?? "") ? cueSignal.plan : null}
+                levels={cueSignal.available && cueSignal.plan && !["STAY_AWAY","DATA_CHECK"].includes(tradeDecision.state) ? cueSignal.plan : null}
                 signalLabel={displayedCue}
                 coachContext={cueSignal.available ? {
                   score: cueSignal.score,
