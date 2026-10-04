@@ -19,9 +19,11 @@ function tf(value:number|null){return value==null?"—":String(value);}
 export function CueHunterPanel({
   enabled,
   onOpenSymbol,
+  maxRiskPerTrade,
 }:{
   enabled:boolean;
   onOpenSymbol:(symbol:string)=>void;
+  maxRiskPerTrade?:string|null;
 }){
   const [mode,setMode]=useState<"auto"|"active"|"momentum"|"buy_low">("auto");
   const [budgetText,setBudgetText]=useState("100");
@@ -31,6 +33,16 @@ export function CueHunterPanel({
   const budget=Number(budgetText)>0?Number(budgetText):undefined;
   const maxPrice=Number(maxPriceText)>0?Number(maxPriceText):undefined;
   const minScore=Math.max(0,Math.min(100,Number(minScoreText)||0));
+  const configuredRisk=Number(maxRiskPerTrade);
+  const riskBudget=Number.isFinite(configuredRisk)&&configuredRisk>0?configuredRisk:null;
+  const riskShares=(row:any)=>{
+    if(!riskBudget||!row.plan)return null;
+    const entry=(row.plan.entryLow+row.plan.entryHigh)/2;
+    const perShare=Math.abs(entry-row.plan.stop);
+    if(!Number.isFinite(perShare)||perShare<=0)return null;
+    const byRisk=Math.floor(riskBudget/perShare);
+    return row.affordableShares==null?byRisk:Math.max(0,Math.min(byRisk,row.affordableShares));
+  };
   const hunter=useCueHunter(enabled,{mode,budget,maxPrice,minScore,limit:12});
 
   if(!enabled)return null;
@@ -80,7 +92,7 @@ export function CueHunterPanel({
         <span><small>1H</small><strong>{tf(top.timeframeScores.oneHour)}</strong></span>
         <span><small>Align</small><strong>{top.timeframeScores.bullishFrames}/3</strong></span>
       </div>
-      <div className={styles.heroCta}>Open chart →</div>
+      <div className={styles.heroCta}>{riskShares(top)!=null ? "Risk size "+riskShares(top)+" sh · " : ""}Open chart →</div>
     </button>}
 
     {hunter.data&&<>
@@ -110,7 +122,7 @@ export function CueHunterPanel({
             <span>1H <strong>{tf(row.timeframeScores.oneHour)}</strong></span>
             <span>{row.timeframeScores.bullishFrames}/3 bullish</span>
           </div>
-          <div className={styles.budget}><WalletCards size={13}/><span>{budget?row.affordableShares&&row.affordableShares>0?row.affordableShares+" shares fit "+money(budget):"Over budget":"Budget off"}</span></div>
+          <div className={styles.budget}><WalletCards size={13}/><span>{riskShares(row)!=null?"Risk-sized: "+riskShares(row)+" shares · ": ""}{budget?row.affordableShares&&row.affordableShares>0?row.affordableShares+" max by budget "+money(budget):"Over budget":"Budget off"}</span></div>
           {row.plan&&<div className={styles.plan}><span>Entry {money(row.plan.entryLow)}–{money(row.plan.entryHigh)}</span><span>Stop {money(row.plan.stop)}</span><span>TP2 {money(row.plan.target2)}</span></div>}
           <Button size="sm" variant="outline" onClick={()=>onOpenSymbol(row.symbol)}>Open chart</Button>
         </article>)}
