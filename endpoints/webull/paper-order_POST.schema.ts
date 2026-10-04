@@ -10,6 +10,7 @@ export const schema = z.object({
   quantity: z.number().int().min(1).max(100000),
   limitPrice: z.number().positive().max(1000000).optional(),
   confirmPaper: z.literal(true),
+  tradeMode: z.enum(["day_trade","swing","long_term"]).optional(),
 }).superRefine((value,ctx)=>{
   if(value.orderType==="LIMIT" && !value.limitPrice) ctx.addIssue({code:"custom",message:"Limit price is required for a limit order.",path:["limitPrice"]});
 });
