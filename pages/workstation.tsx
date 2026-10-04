@@ -36,6 +36,7 @@ import { useFundamentalBrief } from "../helpers/useFundamentalBrief";
 import { useWebullAccount } from "../helpers/useWebullAccount";
 import { useMarketIntelligence } from "../helpers/useMarketIntelligence";
 import { useWebullFundamentals } from "../helpers/useWebullFundamentals";
+import { useWatchlist } from "../helpers/useWatchlist";
 import { calculateCueSignal } from "../helpers/cueSignal";
 import { buildTradeDecision } from "../helpers/tradeDecision";
 import styles from "./workstation.module.css";
@@ -135,6 +136,7 @@ export default function WorkstationPage() {
   const [clockNow,setClockNow]=useState(()=>new Date());
 
   const webull = useWebullAccount(isMember, symbol, timeframe, accountId);
+  const watchlist = useWatchlist(isMember);
   const intelligence = useMarketIntelligence(Boolean(isMember && webull.account.data), symbol);
   const webullFundamentals = useWebullFundamentals(Boolean(isMember && webull.account.data), symbol);
   const fundamental = useFundamentalBrief(symbol, isMember);
@@ -224,6 +226,12 @@ export default function WorkstationPage() {
     marketActive:session.active,
     marketLabel:session.label,
   });
+
+  const decisionActionClass=["ENTER_NOW","HOLD","TAKE_PARTIAL","TAKE_PROFIT"].includes(tradeDecision.state)
+    ? styles.actionBuy
+    : ["EXIT_NOW","EXIT_REVIEW","STAY_AWAY"].includes(tradeDecision.state)
+      ? styles.actionSell
+      : styles.actionWait;
 
   const sizing=useMemo(()=>{
     if(!cueSignal.available||!cueSignal.plan)return null;
