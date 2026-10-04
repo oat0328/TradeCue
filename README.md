@@ -36,3 +36,13 @@ TradeCUE does **not** guarantee profit. `ENTRY READY` means the current rule set
 Never commit credentials. Use environment variables listed in `.env.example`.
 
 This repository is the source mirror of the TradeCUE application deployed with Floot.
+
+
+## Data audit
+
+Validated against the connected Webull PaperTrade/OpenAPI sandbox on 2026-10-03:
+- Accounts, balances/positions rails, bars, snapshots, and screeners respond successfully.
+- Webull company profiles, analyst ratings, target prices, EPS forecasts, filings, earnings calendars, capital flows, financial alerts, and indicator fundamentals respond successfully.
+- TradeCUE technical scores are computed locally from Webull candles; they are not broker-supplied win probabilities.
+- Heikin-Ashi, EMA/RSI/ATR, support/resistance, session ranges, entry/stop/target overlays, and CUE states are derived analytics built from the underlying Webull data.
+- Financial Modeling Prep news is not connected until FMP_API_KEY is configured.
