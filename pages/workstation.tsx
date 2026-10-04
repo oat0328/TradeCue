@@ -586,24 +586,39 @@ export default function WorkstationPage() {
             </div>
 
             <div className={styles.decisionCard}>
+              <div className={styles.copilotLabel}><Sparkles size={15}/><span>CUE DECISION</span><small>AI MARKET COPILOT</small></div>
               <div className={styles.decisionHead}>
                 <div>
-                  <small>TRADECUE ACTION • CUE INTELLIGENCE</small>
-                  <h2 className={actionClass}>{actionHeadline}</h2>
-                  <span className={styles.actionSub}>
-                    {displayedCue ? "CUE " + displayedCue : "Waiting for Webull chart data"}
-                  </span>
+                  <small>{symbol} · {timeframe} · {session.label}</small>
+                  <h2 className={decisionActionClass}>{tradeDecision.headline}</h2>
+                  <span className={styles.actionSub}>{tradeDecision.instruction}</span>
                 </div>
-                <div className={styles.score}>{cueSignal.available ? cueSignal.score : "—"}</div>
+                <div className={styles.score}><span>Score</span>{cueSignal.available ? cueSignal.score : "—"}</div>
               </div>
 
               <div className={styles.truthRail}>
-                <span><b>PRICE</b>Webull sandbox</span>
+                <span><b>WEBULL</b>{chartReady ? "CONNECTED" : "OFFLINE"}</span>
                 <span><b>TECH</b>{cueSignal.available ? cueSignal.score + "/100" : "—"}</span>
                 <span><b>MTF</b>{intelligence.data?.alignment ?? "—"}</span>
                 <span><b>FUND</b>{webullFundamentals.data?.score != null ? webullFundamentals.data.bias + " " + webullFundamentals.data.score : webullFundamentals.isFetching ? "LOADING" : "—"}</span>
-                <span><b>NEWS</b>{fundamental.data ? "FMP LIVE" : "NOT CONNECTED"}</span>
+                <span><b>NEWS</b>{fundamental.data ? "FMP" : "OFFLINE"}</span>
               </div>
+
+              {sizing&&cueSignal.available&&cueSignal.plan&&<div className={styles.positionSizing}>
+                <div className={styles.positionSizingHead}><span>Position Sizing</span><small>Based on your Risk Plan</small></div>
+                <div className={styles.sizingFacts}>
+                  <span><b>Available capital</b><strong>{money(account?.balance.buyingPower)}</strong></span>
+                  <span><b>Max risk / trade</b><strong>{money(risk?.maxRiskPerTrade)}</strong></span>
+                  <span><b>Suggested shares</b><strong>{sizing.shares || "—"}</strong></span>
+                </div>
+                <div className={styles.tradePlan}>
+                  <span><b>Entry range</b><strong>{formatPrice(cueSignal.plan.entryLow)} – {formatPrice(cueSignal.plan.entryHigh)}</strong></span>
+                  <span><b>Stop / exit</b><strong className={styles.negative}>{formatPrice(cueSignal.plan.stop)} ({money(String(-sizing.plannedLoss))})</strong></span>
+                  <span><b>Target 1</b><strong className={styles.positive}>{formatPrice(cueSignal.plan.target1)} (+{money(String(sizing.potentialTp1))})</strong></span>
+                  <span><b>Target 2</b><strong className={styles.positive}>{formatPrice(cueSignal.plan.target2)} (+{money(String(sizing.potentialTp2))})</strong></span>
+                </div>
+                <p className={styles.sizingNote}>Potential outcomes only · TradeCUE does not guarantee profit.</p>
+              </div>}
 
               {cueSignal.available ? (
                 <>
@@ -642,11 +657,21 @@ export default function WorkstationPage() {
                   <div className={styles.tradeButtons}>
                     <Button
                       onClick={() => scrollTo("paper-trading")}
-                      disabled={!account || !dataFresh || displayedCue==="WAIT" || displayedCue==="AVOID"}
+                      disabled={!account || !dataFresh || ["WAIT","AVOID"].includes(displayedCue ?? "")}
                     >
-                      {displayedCue==="BUY"?"Review entry ticket":displayedCue==="SELL"?"Review exit ticket":displayedCue==="HOLD"?"Manage paper position":"No entry yet"}
+                      {tradeDecision.state==="ENTER_NOW"?"Approve Paper Trade":tradeDecision.state==="EXIT_NOW"||tradeDecision.state==="EXIT_REVIEW"?"Review Exit":position?"Manage Position":"Review Paper Plan"}
                     </Button>
-                    <Button variant="outline" onClick={() => scrollTo("chart-coach")}>Professor Cue</Button>
+                    <Button
+                      variant="outline"
+                      disabled={watchingCurrent||watchlist.mutate.isPending}
+                      onClick={()=>!watchingCurrent&&watchlist.mutate.mutate({action:"add",symbol,assetType:"stocks"})}
+                    >
+                      {watchingCurrent?"Watching":"Watch This"}
+                    </Button>
+                  </div>
+                  <div className={styles.professorBrief}>
+                    <BookOpen size={17}/>
+                    <p><strong>Professor Cue:</strong> {tradeDecision.instruction}</p>
                   </div>
                 </>
               ) : (
