@@ -35,7 +35,18 @@ TradeCUE does **not** guarantee profit. `ENTRY READY` means the current rule set
 ## Secrets
 Never commit credentials. Use environment variables listed in `.env.example`.
 
-This repository is the source mirror of the TradeCUE application deployed with Floot.
+## Development workflow
+TradeCUE is GitHub-first:
+
+1. Build and review code in this repository.
+2. Sync the changed source files into Floot project `68777a84-59fb-4e1d-8f5e-99e526f02f78`.
+3. Run Floot typecheck/tests and preview QA.
+4. Publish to https://cuetrade.floot.app.
+5. If a hotfix is made directly in Floot, sync it back here immediately.
+
+See `docs/FLOOT_DEPLOYMENT.md` for the release checklist.
+
+This repository is the **canonical source of truth** for TradeCUE. Floot is the deployment/runtime layer for the production app.
 
 
 ## Data audit
