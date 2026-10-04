@@ -6,23 +6,40 @@ import { effectiveMembership } from "./effectiveMembership";
 
 export type WebullKeys = {appKey:string;appSecret:string};
 
-const webullGetCache = new Map<string,{expiresAt:number,value:any}>();
+const webullGetCache = new Map<string,{expiresAt:number,staleUntil:number,value:any}>();
 const webullInFlight = new Map<string,Promise<any>>();
+const webullCooldown = new Map<string,number>();
+let webullActiveRequests=0;
+const webullWaiters:Array<()=>void>=[];
 
-function webullCacheKey(keys:WebullKeys,path:string,query:Record<string,string>){
+function webullCacheKey(keys:WebullKeys,path:string,query:Record<string,string>,body?:unknown){
  const keyHash=createHash("sha256").update(keys.appKey).digest("hex").slice(0,12);
- return keyHash+"|"+path+"|"+new URLSearchParams(Object.entries(query).sort()).toString();
+ const queryText=new URLSearchParams(Object.entries(query).sort()).toString();
+ const bodyText=body===undefined?"":createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0,16);
+ return keyHash+"|"+path+"|"+queryText+"|"+bodyText;
 }
 function webullGetTtl(path:string){
  if(path.includes("/fundamentals/")) return 5*60_000;
- if(path.includes("/screeners/")) return 20_000;
- if(path.includes("/snapshots/")) return 8_000;
- if(path.includes("/bars/")) return 8_000;
- if(path.includes("/trading/assets/")) return 15_000;
- if(path.includes("/trading/accounts/")) return 30_000;
- return 5_000;
+ if(path.includes("/screeners/")) return 45_000;
+ if(path.includes("/snapshots/")) return 15_000;
+ if(path.includes("/bars/")) return 12_000;
+ if(path.includes("/trading/assets/")) return 20_000;
+ if(path.includes("/trading/accounts/")) return 60_000;
+ return 10_000;
 }
 function wait(ms:number){return new Promise(resolve=>setTimeout(resolve,ms));}
+async function withWebullSlot<T>(work:()=>Promise<T>):Promise<T>{
+ if(webullActiveRequests>=4) await new Promise<void>(resolve=>webullWaiters.push(resolve));
+ webullActiveRequests++;
+ try{return await work();}
+ finally{
+   webullActiveRequests--;
+   webullWaiters.shift()?.();
+ }
+}
+function webullKeyId(keys:WebullKeys){
+ return createHash("sha256").update(keys.appKey).digest("hex").slice(0,12);
+}
 
 export function ownerKeys(): WebullKeys {
  const e=process.env as Record<string,string|undefined>;
@@ -47,22 +64,28 @@ export async function webullRead(
   extraHeaders:Record<string,string>={},
 ) {
  const isGet=body===undefined;
- const cacheKey=isGet?webullCacheKey(keys,path,query):null;
+ const cacheable=isGet||path.startsWith("/market-data/");
+ const cacheKey=cacheable?webullCacheKey(keys,path,query,body):null;
+ const now=Date.now();
  if(cacheKey){
    const cached=webullGetCache.get(cacheKey);
-   if(cached&&cached.expiresAt>Date.now()) return cached.value;
+   if(cached&&cached.expiresAt>now) return cached.value;
    const existing=webullInFlight.get(cacheKey);
    if(existing) return existing;
  }
 
- const execute=async()=>{
+ const execute=()=>withWebullSlot(async()=>{
    const host="api.sandbox.webull.com";
    const text=body===undefined?"":JSON.stringify(body);
    const url=new URL(path,"https://"+host);
    for(const [k,v]of Object.entries(query)) url.searchParams.set(k,v);
+   const keyId=webullKeyId(keys);
 
    let lastError:ApiError|null=null;
    for(let attempt=0;attempt<3;attempt++){
+     const cooldownUntil=webullCooldown.get(keyId)??0;
+     if(cooldownUntil>Date.now()) await wait(cooldownUntil-Date.now());
+
      const response=await fetch(url,{
        method:isGet?"GET":"POST",
        headers:{
@@ -80,23 +103,30 @@ export async function webullRead(
      const rateLimited=response.status===429||code==="TOO_MANY_REQUESTS";
 
      if(response.ok&&!data?.error_code){
-       if(cacheKey) webullGetCache.set(cacheKey,{expiresAt:Date.now()+webullGetTtl(path),value:data});
+       webullCooldown.delete(keyId);
+       if(cacheKey){
+         const ttl=webullGetTtl(path);
+         webullGetCache.set(cacheKey,{expiresAt:Date.now()+ttl,staleUntil:Date.now()+Math.max(ttl*6,60_000),value:data});
+       }
        return data;
      }
 
-     if(rateLimited&&attempt<2){
+     if(rateLimited){
        const retryAfter=Number(response.headers.get("retry-after"));
-       await wait(Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1000:700*Math.pow(2,attempt));
-       continue;
+       const backoff=Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1000:1000*Math.pow(2,attempt);
+       webullCooldown.set(keyId,Date.now()+backoff);
+       const stale=cacheKey?webullGetCache.get(cacheKey):null;
+       if(stale&&stale.staleUntil>Date.now()) return stale.value;
+       if(attempt<2){await wait(backoff);continue;}
      }
 
      lastError=rateLimited
-       ? new ApiError(429,"Webull is rate-limiting market requests. TradeCUE is backing off automatically; wait a moment and retry.")
+       ? new ApiError(429,"Webull is rate-limiting market requests. TradeCUE paused new reads briefly and will retry automatically.")
        : new ApiError(502,"Webull "+code+": "+message);
      break;
    }
    throw lastError??new ApiError(502,"Webull request failed.");
- };
+ });
 
  if(!cacheKey) return execute();
  const promise=execute().finally(()=>webullInFlight.delete(cacheKey));
