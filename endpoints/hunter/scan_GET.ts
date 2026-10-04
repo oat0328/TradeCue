@@ -160,7 +160,7 @@ export async function handle(request:Request){
     const marketChangePercent=ratioPercent(benchmark.change_ratio);
 
     const universe=mergeRows(groups);
-    const evaluationLimit=Math.min(16,Math.max(input.limit+3,12));
+    const evaluationLimit=Math.min(8,Math.max(input.limit,6));
     const lowQualityName=/(acquisition|acqui\b|blank check|warrant|rights?\b|units?\b)/i;
     const filtered=universe
       .filter((row)=>row.price>=3)
@@ -191,7 +191,7 @@ export async function handle(request:Request){
         symbols,
         category:"US_STOCK",
         timespan:spec.timespan,
-        count:"100",
+        count:"160",
         real_time_required:true,
         trading_sessions:"OVN,PRE,RTH,ATH",
       });
@@ -200,7 +200,7 @@ export async function handle(request:Request){
 
     const evaluated=filtered.map(row=>{
       const frames:FrameResult[]=frameSpecs.map((spec,index)=>{
-        const bars=(frameMaps[index]?.[row.symbol]??[]).slice(-100);
+        const bars=(frameMaps[index]?.[row.symbol]??[]).slice(-160);
         const latestBarTime=bars.at(-1)?.time??null;
         return {
           timeframe:spec.timeframe,
