@@ -237,7 +237,9 @@ export async function handle(request:Request){
       const confirmBuy=confirmSignal.available&&confirmSignal.state==="BUY"&&confirm.fresh;
       const contextOk=contextSignal.available&&contextSignal.state!=="AVOID"&&context.fresh;
       const marketOk=marketChangePercent==null||marketChangePercent>-1.5;
+      const tradableSession=marketMode!=="WEEKEND_PREP";
       const entryReady=
+        tradableSession&&
         fastAction==="ENTRY_READY"&&
         confirmBuy&&
         contextOk&&
@@ -248,9 +250,11 @@ export async function handle(request:Request){
       const avoidingFrames=frames.filter(frame=>frame.signal.available&&frame.signal.state==="AVOID").length;
       const action=entryReady
         ? "ENTRY_READY" as const
-        : (compositeScore??0)>=input.minScore&&avoidingFrames<2&&fastSignal.available&&fastSignal.state!=="AVOID"
+        : marketMode==="WEEKEND_PREP"&&(compositeScore??0)>=input.minScore&&fastSignal.available&&fastSignal.state!=="AVOID"
           ? "WATCH" as const
-          : "WAIT" as const;
+          : (compositeScore??0)>=input.minScore&&avoidingFrames<2&&fastSignal.available&&fastSignal.state!=="AVOID"
+            ? "WATCH" as const
+            : "WAIT" as const;
 
       const affordableShares=input.budget?Math.floor(input.budget/row.price):null;
       const budgetFit=input.budget?affordableShares!>=1:null;
@@ -307,7 +311,7 @@ export async function handle(request:Request){
       rows,
       marketMode,
       marketContext:{symbol:"QQQ",changePercent:marketChangePercent},
-      note:"Auto Hunt scans Webull every 60 seconds while the workstation is open. Entry Ready requires fresh 5m + 15m confirmation, acceptable 1H context, volume/setup quality and market context. It identifies opportunities, not guaranteed profits.",
+      note:"24H Hunter is session-aware. While the workstation is running it scans Webull across overnight, premarket, regular and after-hours sessions where fresh data is available; weekends switch to Monday Prep and never issue Entry Ready. Entry Ready requires fresh 5m + 15m confirmation, acceptable 1H context, volume/setup quality and market context.",
     });
   }catch(error){
     return apiFailure(error);
