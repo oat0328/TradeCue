@@ -1,0 +1,1 @@
+import {useQuery}from "@tanstack/react-query";import {getAdminMembers}from "../endpoints/admin/members_GET.schema";export function useAdminMembers(enabled:boolean){return useQuery({queryKey:["admin","members"],queryFn:getAdminMembers,enabled,retry:false});}

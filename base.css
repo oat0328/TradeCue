@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Overlay layers */
+  --z-overlay: 400;
+
+  --z-spotlight: 1000; /* Tutorial spotlights/guided help */
+
+  /* System layers */
+  --z-critical: 2000; /* Critical system notifications */
+
+  /* spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+}
+
+:root {
+  --background: #020712;
+  --foreground: #eef8ff;
+  --surface: #07111f;
+  --surface-foreground: #e8f3fb;
+  --sidebar: #050d19;
+  --sidebar-foreground: #b8c8d8;
+  --card: #091523;
+  --card-foreground: #eef8ff;
+  --popup: #0b1827;
+  --popup-foreground: #eef8ff;
+  --primary: #2dd4ff;
+  --primary-foreground: #021018;
+  --secondary: #0e2234;
+  --secondary-foreground: #dcecff;
+  --accent: #2dd4ff;
+  --accent-foreground: #021018;
+  --muted: #0b1724;
+  --muted-foreground: #7f95aa;
+  --success: #35e59a;
+  --success-foreground: #032115;
+  --error: #ff6b7d;
+  --error-foreground: #2d050b;
+  --warning: #f6c85f;
+  --warning-foreground: #241800;
+  --info: #3da5ff;
+  --info-foreground: #041625;
+  --info-hover: #69b9ff;
+  --info-active: #208fe9;
+  --border: #173047;
+  --font-family-base: "IBM Plex Sans", system-ui, sans-serif;
+  --font-family-display: "Bricolage Grotesque", "IBM Plex Sans", sans-serif;
+  --font-family-monospace: "IBM Plex Mono", ui-monospace, monospace;
+  --font-family-cursive: cursive;
+  --shadow: 0 6px 22px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 12px 34px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.46);
+  --shadow-focus: 0 0 0 3px rgba(45, 212, 255, 0.24);
+  --radius-sm: 0.45rem;
+  --radius: 0.7rem;
+  --radius-md: 0.95rem;
+  --radius-lg: 1.35rem;
+  --radius-full: 999px;
+  --animation-duration-fast: 120ms;
+  --animation-duration-normal: 220ms;
+  --animation-duration-slow: 420ms;
+  --chart-color-1: #2dd4ff;
+  --chart-color-2: #35e59a;
+  --chart-color-3: #7c8cff;
+  --chart-color-4: #f6c85f;
+  --chart-color-5: #ff6b7d;
+}
+
+.dark {
+  --background: #020712;
+  --foreground: #eef8ff;
+  --surface: #07111f;
+  --surface-foreground: #e8f3fb;
+  --sidebar: #050d19;
+  --sidebar-foreground: #b8c8d8;
+  --card: #091523;
+  --card-foreground: #eef8ff;
+  --popup: #0b1827;
+  --popup-foreground: #eef8ff;
+  --primary: #2dd4ff;
+  --primary-foreground: #021018;
+  --secondary: #0e2234;
+  --secondary-foreground: #dcecff;
+  --accent: #2dd4ff;
+  --accent-foreground: #021018;
+  --muted: #0b1724;
+  --muted-foreground: #7f95aa;
+  --success: #35e59a;
+  --success-foreground: #032115;
+  --error: #ff6b7d;
+  --error-foreground: #2d050b;
+  --warning: #f6c85f;
+  --warning-foreground: #241800;
+  --info: #3da5ff;
+  --info-foreground: #041625;
+  --info-hover: #69b9ff;
+  --info-active: #208fe9;
+  --border: #173047;
+  --chart-color-1: #2dd4ff;
+  --chart-color-2: #35e59a;
+  --chart-color-3: #7c8cff;
+  --chart-color-4: #f6c85f;
+  --chart-color-5: #ff6b7d;
+}

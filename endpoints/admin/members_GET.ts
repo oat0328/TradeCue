@@ -1,0 +1,2 @@
+import {apiUser,apiJson,apiFailure}from "../../helpers/apiAccess";import {db}from "../../helpers/db";
+export async function handle(request:Request){try{await apiUser(request,true);return apiJson({members:await db.selectFrom("users as u").leftJoin("userMemberships as m","m.userId","u.id").select(["u.id","u.displayName","u.email","u.role","m.tier","m.status"]).orderBy("u.id","desc").limit(200).execute()});}catch(e){return apiFailure(e);}}
