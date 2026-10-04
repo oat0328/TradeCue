@@ -4,11 +4,11 @@
 .source{font-size:10px;letter-spacing:.1em;color:var(--primary);padding:6px;border:1px solid var(--border);border-radius:5px}
 .zones,.indicators{display:flex;gap:4px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border);align-items:center}
 .indicators>span{color:var(--muted-foreground);font:600 10px/1 var(--font-family-monospace);letter-spacing:.08em;margin-right:4px}
-.svg{display:block;width:100%;height:auto;min-height:500px;max-height:720px;cursor:crosshair;touch-action:pan-y;user-select:none;background:radial-gradient(circle at 50% 20%,color-mix(in srgb,var(--primary) 3%,transparent),transparent 48%);border-radius:10px}
+.svg{display:block;width:100%;height:auto;min-height:650px;max-height:900px;cursor:crosshair;touch-action:pan-y;user-select:none;background:radial-gradient(circle at 50% 20%,color-mix(in srgb,var(--primary) 3%,transparent),transparent 48%);border:1px solid color-mix(in srgb,var(--primary) 12%,var(--border));border-radius:12px}
 .svg:focus{outline:1px solid var(--primary)}
-.axis{fill:var(--muted-foreground);font-family:var(--font-family-monospace),monospace;font-size:11px}
-.zoneText{fill:var(--primary);font-size:9px}
-.vwapText{fill:var(--warning);font-size:10px}
+.axis{fill:var(--muted-foreground);font-family:var(--font-family-monospace),monospace;font-size:13px}
+.zoneText{fill:var(--primary);font:700 11px var(--font-family-monospace),monospace}
+.vwapText{fill:var(--warning);font:700 12px var(--font-family-monospace),monospace}
 .entryBand{fill:var(--primary);opacity:.09;stroke:var(--primary);stroke-width:1;stroke-dasharray:5 4}
 .stopLine{stroke:var(--error);stroke-width:1.5;stroke-dasharray:6 4}
 .targetLine{stroke:var(--success);stroke-width:1.2;stroke-dasharray:6 4}
@@ -21,7 +21,7 @@
 .riskBox{fill:color-mix(in srgb,var(--error) 15%,transparent);stroke:color-mix(in srgb,var(--error) 55%,transparent);stroke-width:1}
 .rewardText{fill:var(--success);font:700 10px var(--font-family-monospace)}
 .riskText{fill:var(--error);font:700 10px var(--font-family-monospace)}
-.levelText,.entryText{fill:var(--foreground);font-size:10px;font-family:var(--font-family-monospace),monospace}
+.levelText,.entryText{fill:var(--foreground);font-size:12px;font-family:var(--font-family-monospace),monospace;font-weight:700}
 .entryText{fill:var(--primary)}
 .ema9,.ema20,.ema50,.ema200,.sma50,.sma200,.bollinger{fill:none;stroke-width:1.7;pointer-events:none}
 .ema9{stroke:var(--chart-color-1)}
