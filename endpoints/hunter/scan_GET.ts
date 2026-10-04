@@ -161,11 +161,15 @@ export async function handle(request:Request){
 
     const universe=mergeRows(groups);
     const evaluationLimit=Math.min(16,Math.max(input.limit+3,12));
+    const lowQualityName=/(acquisition|acqui\b|blank check|warrant|rights?\b|units?\b)/i;
     const filtered=universe
-      .filter((row)=>row.price>=1)
+      .filter((row)=>row.price>=3)
       .filter((row)=>input.maxPrice==null||row.price<=input.maxPrice)
       .filter((row)=>input.budget==null||row.price<=input.budget)
-      .filter((row)=>row.marketValue==null||row.marketValue>=10_000_000)
+      .filter((row)=>row.marketValue==null||row.marketValue>=50_000_000)
+      .filter((row)=>input.mode!=="auto"||!lowQualityName.test(row.name))
+      .filter((row)=>input.mode!=="auto"||row.changePercent==null||(row.changePercent>=-6&&row.changePercent<=15))
+      .filter((row)=>input.mode!=="auto"||row.relativeVolume==null||row.relativeVolume>=1)
       .sort((a,b)=>{
         const source=(b.sourceTags.length-a.sourceTags.length)*20;
         if(source!==0)return source;
