@@ -292,6 +292,8 @@ export default function WorkstationPage() {
           ? <Badge variant="success">WEBULL SANDBOX • AUTO REFRESH</Badge>
           : <Badge variant="warning">CONNECTION REQUIRED</Badge>;
 
+  const watchingCurrent=Boolean(watchlist.list.data?.items.some(item=>item.symbol.toUpperCase()===symbol.toUpperCase()));
+
   const latestEarnings = fundamental.data?.earnings?.[0];
   const epsRead = latestEarnings?.epsActual != null && latestEarnings?.epsEstimated != null
     ? latestEarnings.epsActual >= latestEarnings.epsEstimated ? "Beat" : "Miss"
