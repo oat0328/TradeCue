@@ -694,4 +694,13 @@ export default function WorkstationPage() {
             </TabsContent>
           </Tabs>
 
-          <section cl
+          <section className={styles.automationCard}>
+            <div><Gauge size={20} /><span><small>CUE AUTOPILOT</small><strong>MANUAL PAPER MODE ACTIVE</strong></span></div>
+            <div className={styles.automationStats}><span>Webull paper orders enabled</span><span>No autonomous live trading</span><span>Risk review required</span></div>
+            <Button variant="outline" disabled>Autopilot strategy runner coming later</Button>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+}
