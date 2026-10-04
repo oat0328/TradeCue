@@ -876,7 +876,7 @@ export default function CueVisionChart({
           <span><b>Pre H/L</b><strong>{premarketRange ? format(premarketRange.high)+" / "+format(premarketRange.low) : "—"}</strong></span>
         </div>
 
-        {coachContext && (
+        {coachContext ? (
           <>
             <div className={styles.coachChecks}>
               {[
@@ -892,10 +892,12 @@ export default function CueVisionChart({
                 </span>
               ))}
             </div>
+
             <p className={styles.currentRead}>
               <strong>What TradeCUE sees:</strong>{" "}
               Price {format(candle?.close)} · EMA9 {format(coachContext.ema9)} · EMA20 {format(coachContext.ema20)} · RSI {coachContext.rsi14.toFixed(1)} · RVOL {coachContext.relativeVolume.toFixed(2)}× · ATR {coachContext.atrPercent.toFixed(2)}%.
             </p>
+
             <p className={styles.actionRead}>
               <strong>{signalLabel === "BUY" ? "BUY CHECK:" : signalLabel === "SELL" ? "EXIT CHECK:" : signalLabel === "AVOID" ? "STAY AWAY:" : signalLabel === "HOLD" ? "HOLD CHECK:" : "WAIT CHECK:"}</strong>{" "}
               {signalLabel === "BUY"
@@ -906,4 +908,37 @@ export default function CueVisionChart({
                     ? "Stay away for now. Trend or setup conditions are weak enough that TradeCUE does not want a new long entry."
                     : signalLabel === "HOLD"
                       ? "The setup is still constructive. Watch support, the stop line and whether Heikin-Ashi momentum starts losing body size."
-                      : "No entry yet. The chart is missing confirmation,
+                      : "No entry yet. The chart is missing confirmation, the data is stale, or one of the core checks is below threshold. Wait for the failed checks to improve instead of chasing."}
+            </p>
+          </>
+        ) : (
+          <p className={styles.currentRead}><strong>Data check:</strong> TradeCUE needs a valid CUE calculation before Professor Cue can grade this chart.</p>
+        )}
+
+        {teachingMode && (
+          <>
+            <div className={styles.candleTutor}>
+              <div><b>GREEN BODY</b><span>Close above open. Buyers controlled that interval, but one green candle is not enough to enter.</span></div>
+              <div><b>RED BODY</b><span>Close below open. Sellers controlled that interval. Watch whether support holds before assuming continuation.</span></div>
+              <div><b>MISSING WICK</b><span>A Heikin-Ashi candle with little opposite wick can show strong directional control; still confirm with real Webull price and CUE checks.</span></div>
+              <div><b>SMALL BODY + 2 WICKS</b><span>Indecision. Treat it as a pause/reversal watch and wait for the next confirmed move.</span></div>
+            </div>
+
+            <details className={styles.learnDetails}>
+              <summary>Professor Cue chart lessons</summary>
+              <div className={styles.group}>
+                {(Object.keys(lessons) as Array<keyof typeof lessons>).map(key=>(
+                  <Button key={key} size="sm" variant={lesson===key?"secondary":"ghost"} onClick={()=>setLesson(key)}>
+                    {lessons[key].title}
+                  </Button>
+                ))}
+              </div>
+              <h4>{lessons[lesson].title}</h4>
+              <p className={styles.reading}>{lessons[lesson].text}</p>
+            </details>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
