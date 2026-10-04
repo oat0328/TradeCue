@@ -435,7 +435,7 @@ export default function WorkstationPage() {
                 <Radar size={22} />
                 <div>
                   <strong>No fabricated opportunities or scores.</strong>
-                  <p>{cueSignal.reason} Cue Hunter scans the broader Webull market; this section evaluates the symbol currently loaded in Cue Vision.</p>
+                  <p>{"reason" in cueSignal ? cueSignal.reason : "Signal inputs are unavailable."} Cue Hunter scans the broader Webull market; this section evaluates the symbol currently loaded in Cue Vision.</p>
                 </div>
               </div>
             )}
@@ -563,7 +563,7 @@ export default function WorkstationPage() {
               ) : (
                 <>
                   <h3>Signal engine waiting for data</h3>
-                  <p className={styles.decisionCopy}>{cueSignal.reason}</p>
+                  <p className={styles.decisionCopy}>{"reason" in cueSignal ? cueSignal.reason : "Signal inputs are unavailable."}</p>
                   <div className={styles.professor}>
                     <BookOpen size={19} />
                     <p><strong>Professor Cue:</strong> Connect Webull PaperTrade and load enough candles. TradeCUE will not invent a signal when the required inputs are unavailable.</p>
