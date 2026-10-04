@@ -132,6 +132,7 @@ export default function WorkstationPage() {
   const [timeframe, setTimeframe] = useState<(typeof timeframes)[number]>("5m");
   const [accountId, setAccountId] = useState<string>();
   const [deskMode, setDeskMode] = useState<"teach"|"pro">("teach");
+  const [clockNow,setClockNow]=useState(()=>new Date());
 
   const webull = useWebullAccount(isMember, symbol, timeframe, accountId);
   const intelligence = useMarketIntelligence(Boolean(isMember && webull.account.data), symbol);
@@ -165,8 +166,14 @@ export default function WorkstationPage() {
     latestAgeMinutes != null && latestAgeMinutes <= freshnessMinutes[timeframe];
 
   const risk = entitlements.data?.risk;
-  const session = marketSession();
+  const session = marketSession(clockNow);
   const account = webull.account.data;
+  const pt = ptClock(clockNow);
+  const exitClock = cutoffCountdown(clockNow,risk?.dayTradeFlatTimePt ?? "12:30");
+  const dayPnlNumber=Number(account?.balance.dayPnl ?? 0);
+  const maxDailyLoss=Number(risk?.maxDailyLoss ?? 0);
+  const dailyRiskUsed=Math.max(0,-Math.min(0,Number.isFinite(dayPnlNumber)?dayPnlNumber:0));
+  const dailyRiskPercent=maxDailyLoss>0?Math.min(100,Math.round(dailyRiskUsed/maxDailyLoss*100)):0;
   const signedOut = authState.type === "unauthenticated";
   const position = account?.positions.find(
     (item) => item.symbol.toUpperCase() === symbol.toUpperCase() && Number(item.quantity ?? 0) > 0,
@@ -208,11 +215,43 @@ export default function WorkstationPage() {
           ? styles.actionSell
           : styles.actionWait;
 
+  const tradeDecision=buildTradeDecision({
+    signal:cueSignal,
+    intelligenceAction:intelligence.data?.action ?? null,
+    currentPrice:latest?.close,
+    fresh:dataFresh,
+    hasPosition:Boolean(position),
+    marketActive:session.active,
+    marketLabel:session.label,
+  });
+
+  const sizing=useMemo(()=>{
+    if(!cueSignal.available||!cueSignal.plan)return null;
+    const entry=(cueSignal.plan.entryLow+cueSignal.plan.entryHigh)/2;
+    const stop=cueSignal.plan.stop;
+    const perShareRisk=Math.max(0,entry-stop);
+    const maxRisk=Number(risk?.maxRiskPerTrade);
+    const cash=Number(account?.balance.buyingPower);
+    if(!Number.isFinite(entry)||entry<=0||perShareRisk<=0)return null;
+    const riskQty=Number.isFinite(maxRisk)&&maxRisk>0?Math.floor(maxRisk/perShareRisk):0;
+    const cashQty=Number.isFinite(cash)&&cash>0?Math.floor(cash/entry):0;
+    const shares=Math.max(0,Math.min(riskQty||cashQty,cashQty||riskQty));
+    const plannedLoss=shares*perShareRisk;
+    const potentialTp1=shares*Math.max(0,cueSignal.plan.target1-entry);
+    const potentialTp2=shares*Math.max(0,cueSignal.plan.target2-entry);
+    return {entry,stop,shares,plannedLoss,potentialTp1,potentialTp2,maxRisk,cash};
+  },[cueSignal,risk?.maxRiskPerTrade,account?.balance.buyingPower]);
+
   useEffect(() => {
     if (webull.account.data?.selectedAccountId && !accountId) {
       setAccountId(webull.account.data.selectedAccountId);
     }
   }, [webull.account.data?.selectedAccountId, accountId]);
+
+  useEffect(()=>{
+    const timer=window.setInterval(()=>setClockNow(new Date()),1000);
+    return ()=>window.clearInterval(timer);
+  },[]);
 
   const submitSymbol = (event: React.FormEvent) => {
     event.preventDefault();
