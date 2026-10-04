@@ -8,8 +8,8 @@ export function useMarketPulse(enabled:boolean){
     queryFn:getMarketPulse,
     enabled,
     retry:false,
-    staleTime:15_000,
-    refetchInterval:30_000,
+    staleTime:30_000,
+    refetchInterval:60_000,
     refetchIntervalInBackground:false,
   });
 }
@@ -20,8 +20,8 @@ export function usePositionMonitor(enabled:boolean,accountId?:string){
     queryFn:()=>getPositionMonitor(accountId),
     enabled,
     retry:false,
-    staleTime:20_000,
-    refetchInterval:30_000,
+    staleTime:30_000,
+    refetchInterval:60_000,
     refetchIntervalInBackground:false,
   });
 }
