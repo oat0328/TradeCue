@@ -41,7 +41,7 @@ export function WatchlistPanel({
 
   return <section className={styles.panel} id="watchlist">
     <div className={styles.head}>
-      <div><small>WATCHLIST</small><h2>Saved symbols</h2><p>Persists to your TradeCUE account. Quote fields come from your connected Webull PaperTrade data when available.</p></div>
+      <div><small>WATCHING</small><h2>Watching Center</h2><p>Your saved market radar. Watch from the Live Market Wall, then open any symbol in Cue Vision for the current chart, CUE, risk plan and teaching read.</p></div>
       <Badge variant={list.data?.quoteStatus==="connected"?"success":"outline"}>{list.data?.quoteStatus==="connected"?"WEBULL QUOTES":"SAVED LIST ONLY"}</Badge>
     </div>
 
