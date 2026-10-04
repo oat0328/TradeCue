@@ -316,57 +316,45 @@ export default function WorkstationPage() {
             </section>
           )}
 
-          <section className={styles.statusGrid} aria-label="Market data status">
+          <section className={styles.statusGrid} aria-label="TradeCUE live status">
             <article>
-              <small>Symbol</small>
-              <strong>{symbol}</strong>
-              <span>Selected instrument</span>
-            </article>
-            <article>
-              <small>Market session</small>
+              <small>Market</small>
               <strong className={session.active?styles.positive:styles.actionWait}>{session.label}</strong>
               <span>{session.detail}</span>
             </article>
             <article>
-              <small>Last loaded price</small>
+              <small>{symbol} price</small>
               <strong>{formatPrice(latest?.close)}</strong>
               <span className={change == null ? undefined : change >= 0 ? styles.positive : styles.negative}>
-                {change == null ? "No comparison available" : (change >= 0 ? "+" : "") + change.toFixed(2) + "% vs prior bar"}
+                {change == null ? latestBarLabel : (change >= 0 ? "+" : "") + change.toFixed(2) + "% · " + timeframe}
               </span>
             </article>
-            <article>
-              <small>Latest candle</small>
-              <strong>{latestBarLabel}</strong>
-              <span>{timeframe} timeframe</span>
-            </article>
-            <article>
-              <small>TradeCUE action</small>
+            <article className={styles.actionTile}>
+              <small>TradeCUE now</small>
               <strong className={actionClass}>{actionHeadline}</strong>
-              <span>{cueSignal.available ? "Score " + cueSignal.score + "/100 • rules-based" : "Waiting for enough Webull candles"}</span>
+              <span>{cueSignal.available ? "CUE " + cueSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
             </article>
             <article>
-              <small>Data state</small>
+              <small>Webull feed</small>
               <strong>
                 {chartReady
                   ? !session.active
-                    ? "MARKET CLOSED"
+                    ? "LAST CLOSE"
                     : !dataFresh && !["1D", "1W"].includes(timeframe)
                       ? "STALE"
                       : delayMinutes != null && delayMinutes > 0
                         ? "DELAYED"
-                        : "CONNECTED"
-                  : "DATA UNAVAILABLE"}
+                        : "LIVE"
+                  : "OFFLINE"}
               </strong>
               <span>
                 {chartReady
                   ? !session.active
-                    ? "Last Webull bar: " + latestBarLabel
-                    : !dataFresh && !["1D", "1W"].includes(timeframe)
-                      ? "Latest intraday candle is " + Math.round(latestAgeMinutes ?? 0) + " minutes old"
-                      : delayMinutes != null && delayMinutes > 0
-                        ? "Webull reports " + delayMinutes + "-minute delay"
-                        : "Webull sandbox market data • 10s polling"
-                  : "Connect Webull PaperTrade below"}
+                    ? "Last bar " + latestBarLabel
+                    : delayMinutes != null && delayMinutes > 0
+                      ? delayMinutes + " min delay"
+                      : "Auto-refreshing"
+                  : "Connect Webull PaperTrade"}
               </span>
             </article>
           </section>
