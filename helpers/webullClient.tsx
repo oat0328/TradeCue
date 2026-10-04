@@ -1,10 +1,28 @@
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import { signWebullRequest, decryptBrokerSecret } from "./brokerCrypto";
 import { db } from "./db";
 import { ApiError } from "./apiAccess";
 import { effectiveMembership } from "./effectiveMembership";
 
 export type WebullKeys = {appKey:string;appSecret:string};
+
+const webullGetCache = new Map<string,{expiresAt:number,value:unknown}>();
+const webullInFlight = new Map<string,Promise<unknown>>();
+
+function webullCacheKey(keys:WebullKeys,path:string,query:Record<string,string>){
+ const keyHash=createHash("sha256").update(keys.appKey).digest("hex").slice(0,12);
+ return keyHash+"|"+path+"|"+new URLSearchParams(Object.entries(query).sort()).toString();
+}
+function webullGetTtl(path:string){
+ if(path.includes("/fundamentals/")) return 5*60_000;
+ if(path.includes("/screeners/")) return 20_000;
+ if(path.includes("/snapshots/")) return 8_000;
+ if(path.includes("/bars/")) return 8_000;
+ if(path.includes("/trading/assets/")) return 15_000;
+ if(path.includes("/trading/accounts/")) return 30_000;
+ return 5_000;
+}
+function wait(ms:number){return new Promise(resolve=>setTimeout(resolve,ms));}
 
 export function ownerKeys(): WebullKeys {
  const e=process.env as Record<string,string|undefined>;
@@ -28,28 +46,62 @@ export async function webullRead(
   body?:unknown,
   extraHeaders:Record<string,string>={},
 ) {
- const host="api.sandbox.webull.com";
- const text=body===undefined?"":JSON.stringify(body);
- const url=new URL(path,"https://"+host);
- for(const [k,v]of Object.entries(query)) url.searchParams.set(k,v);
- const response=await fetch(url,{
-   method:body===undefined?"GET":"POST",
-   headers:{
-     Accept:"application/json",
-     "Content-Type":"application/json",
-     ...signWebullRequest({host,path,query,body:text,...keys}),
-     ...extraHeaders,
-   },
-   body:text||undefined,
-   signal:AbortSignal.timeout(15000),
- });
- const data=await response.json().catch(()=>null);
- if(!response.ok || data?.error_code) {
-  const code=typeof data?.error_code==="string"?data.error_code:"HTTP_"+response.status;
-  const message=typeof data?.message==="string"?data.message:"Webull rejected the request.";
-  throw new ApiError(502,"Webull "+code+": "+message);
+ const isGet=body===undefined;
+ const cacheKey=isGet?webullCacheKey(keys,path,query):null;
+ if(cacheKey){
+   const cached=webullGetCache.get(cacheKey);
+   if(cached&&cached.expiresAt>Date.now()) return cached.value;
+   const existing=webullInFlight.get(cacheKey);
+   if(existing) return existing;
  }
- return data;
+
+ const execute=async()=>{
+   const host="api.sandbox.webull.com";
+   const text=body===undefined?"":JSON.stringify(body);
+   const url=new URL(path,"https://"+host);
+   for(const [k,v]of Object.entries(query)) url.searchParams.set(k,v);
+
+   let lastError:ApiError|null=null;
+   for(let attempt=0;attempt<3;attempt++){
+     const response=await fetch(url,{
+       method:isGet?"GET":"POST",
+       headers:{
+         Accept:"application/json",
+         "Content-Type":"application/json",
+         ...signWebullRequest({host,path,query,body:text,...keys}),
+         ...extraHeaders,
+       },
+       body:text||undefined,
+       signal:AbortSignal.timeout(15000),
+     });
+     const data=await response.json().catch(()=>null);
+     const code=typeof data?.error_code==="string"?data.error_code:"HTTP_"+response.status;
+     const message=typeof data?.message==="string"?data.message:"Webull rejected the request.";
+     const rateLimited=response.status===429||code==="TOO_MANY_REQUESTS";
+
+     if(response.ok&&!data?.error_code){
+       if(cacheKey) webullGetCache.set(cacheKey,{expiresAt:Date.now()+webullGetTtl(path),value:data});
+       return data;
+     }
+
+     if(rateLimited&&attempt<2){
+       const retryAfter=Number(response.headers.get("retry-after"));
+       await wait(Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1000:700*Math.pow(2,attempt));
+       continue;
+     }
+
+     lastError=rateLimited
+       ? new ApiError(429,"Webull is rate-limiting market requests. TradeCUE is backing off automatically; wait a moment and retry.")
+       : new ApiError(502,"Webull "+code+": "+message);
+     break;
+   }
+   throw lastError??new ApiError(502,"Webull request failed.");
+ };
+
+ if(!cacheKey) return execute();
+ const promise=execute().finally(()=>webullInFlight.delete(cacheKey));
+ webullInFlight.set(cacheKey,promise);
+ return promise;
 }
 
 export function webullRows(data:unknown): Record<string,any>[] {
