@@ -51,9 +51,9 @@ export function CueHunterPanel({
   return <section className={styles.panel} id="hunter">
     <div className={styles.head}>
       <div>
-        <small>CUE HUNTER</small>
+        <small>24H CUE HUNTER</small>
         <h2>{hunter.data?.marketMode==="WEEKEND_PREP"?"Monday Prep Hunter":"Opportunity Hunt"}</h2>
-        <p>{hunter.data?.marketMode==="WEEKEND_PREP"?"Ranks Friday-close setups for Monday review. No stock Entry Ready while the market is closed.":"Auto-scans Webull every 60s · 5m + 15m + 1H alignment."}</p>
+        <p>{hunter.data?.marketMode==="WEEKEND_PREP"?"Ranks Friday-close setups for Monday review. No stock Entry Ready while the market is closed.":"Session-aware scan · 5m + 15m + 1H alignment."}</p>
       </div>
       <div className={styles.liveState}><span/><strong>{hunter.isFetching?"SCANNING":"AUTO ON"}</strong></div>
     </div>
@@ -127,7 +127,7 @@ export function CueHunterPanel({
           <Button size="sm" variant="outline" onClick={()=>onOpenSymbol(row.symbol)}>Open chart</Button>
         </article>)}
       </div>
-      {!hunter.data.rows.length&&<p className={styles.empty}>No qualified setup right now. Auto Hunt keeps checking while this workstation is open.</p>}
+      {!hunter.data.rows.length&&<p className={styles.empty}>No qualified setup right now. 24H Hunter keeps checking while TradeCUE is running; weekends become Monday Prep.</p>}
     </>}
   </section>;
 }
