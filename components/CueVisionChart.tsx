@@ -182,13 +182,13 @@ export default function CueVisionChart({
   const premarketRange = intraday ? rangeFor(4*60,9*60+30) : null;
   const openingRange = intraday ? rangeFor(9*60+30,10*60) : null;
 
-  const width = 1200;
-  const height = 650;
-  const left = 18;
-  const right = 108;
-  const top = 28;
-  const bottom = 72;
-  const plotHeight = 490;
+  const width = 1400;
+  const height = 780;
+  const left = 22;
+  const right = 126;
+  const top = 32;
+  const bottom = 82;
+  const plotHeight = 600;
   const plotWidth = width - left - right;
 
   const referenceValues = [
