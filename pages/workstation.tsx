@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Bell,
   BookOpen,
   BriefcaseBusiness,
   CandlestickChart,
+  Clock3,
   Gauge,
   LayoutDashboard,
   Link2,
@@ -12,6 +14,7 @@ import {
   Newspaper,
   Radar,
   ShieldCheck,
+  Sparkles,
   WalletCards,
 } from "lucide-react";
 import { Badge } from "../components/Badge";
@@ -23,7 +26,7 @@ import { WebullPanel } from "../components/WebullPanel";
 import { PaperOrderPanel } from "../components/PaperOrderPanel";
 import { TradePlanner } from "../components/TradePlanner";
 import { WatchlistPanel } from "../components/WatchlistPanel";
-import { CueHunterPanel } from "../components/CueHunterPanel";
+import { OpportunityCommandStrip } from "../components/OpportunityCommandStrip";
 import { MarketPulsePanel } from "../components/MarketPulsePanel";
 import { PositionMonitorPanel } from "../components/PositionMonitorPanel";
 import { CueCheatSheet } from "../components/CueCheatSheet";
@@ -34,6 +37,7 @@ import { useWebullAccount } from "../helpers/useWebullAccount";
 import { useMarketIntelligence } from "../helpers/useMarketIntelligence";
 import { useWebullFundamentals } from "../helpers/useWebullFundamentals";
 import { calculateCueSignal } from "../helpers/cueSignal";
+import { buildTradeDecision } from "../helpers/tradeDecision";
 import styles from "./workstation.module.css";
 
 const plans = {
