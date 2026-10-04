@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
@@ -13,11 +13,17 @@ export function PaperOrderPanel({
   accountId,
   symbol,
   latestPrice,
+  positionQuantity = 0,
+  longOnly = true,
+  suggestedSide = null,
 }: {
   enabled:boolean;
   accountId?:string;
   symbol:string;
   latestPrice?:number;
+  positionQuantity?:number;
+  longOnly?:boolean;
+  suggestedSide?:"BUY"|"SELL"|null;
 }) {
   const paper=usePaperOrders(enabled,accountId);
   const [side,setSide]=useState<"BUY"|"SELL">("BUY");
@@ -29,12 +35,24 @@ export function PaperOrderPanel({
 
   const quantityNumber=Number(quantity);
   const limitNumber=Number(limitPrice);
+  const canSell=!longOnly||positionQuantity>0;
+
+  useEffect(()=>{
+    if(side==="SELL"&&!canSell)setSide("BUY");
+  },[side,canSell]);
+
+  useEffect(()=>{
+    if(suggestedSide==="BUY")setSide("BUY");
+    if(suggestedSide==="SELL"&&canSell)setSide("SELL");
+  },[suggestedSide,canSell]);
+
   const valid=Boolean(
     enabled &&
     accountId &&
     Number.isInteger(quantityNumber) &&
     quantityNumber>0 &&
     quantityNumber<=100000 &&
+    (side==="BUY" || (canSell && quantityNumber<=positionQuantity)) &&
     (orderType==="MARKET" || (Number.isFinite(limitNumber)&&limitNumber>0)) &&
     confirmed
   );
@@ -79,7 +97,7 @@ export function PaperOrderPanel({
 
     <div className={styles.ticket}>
       <div><label>Symbol</label><strong>{symbol}</strong></div>
-      <div><label>Side</label><Select value={side} onValueChange={(value)=>setSide(value as "BUY"|"SELL")}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="BUY">BUY</SelectItem><SelectItem value="SELL">SELL</SelectItem></SelectContent></Select></div>
+      <div><label>Side</label><Select value={side} onValueChange={(value)=>setSide(value as "BUY"|"SELL")}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="BUY">BUY / OPEN LONG</SelectItem>{canSell&&<SelectItem value="SELL">SELL / EXIT LONG</SelectItem>}</SelectContent></Select></div>
       <div><label>Order type</label><Select value={orderType} onValueChange={(value)=>setOrderType(value as "MARKET"|"LIMIT")}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="MARKET">Market</SelectItem><SelectItem value="LIMIT">Limit</SelectItem></SelectContent></Select></div>
       <div><label>Quantity</label><Input inputMode="numeric" value={quantity} onChange={(event)=>setQuantity(event.target.value.replace(/[^0-9]/g,""))}/></div>
       {orderType==="LIMIT"&&<div><label>Limit price</label><Input inputMode="decimal" value={limitPrice} onChange={(event)=>setLimitPrice(event.target.value)}/></div>}
@@ -87,7 +105,7 @@ export function PaperOrderPanel({
       <div><label>Approx. notional</label><strong>{estimated!=null&&Number.isFinite(estimated)?"$"+estimated.toLocaleString(undefined,{maximumFractionDigits:2}):"—"}</strong></div>
     </div>
 
-    <label className={styles.confirm}><Checkbox checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)}/><span>I confirm this is a Webull PaperTrade order and I reviewed the symbol, side, quantity and order type.</span></label>
+    <label className={styles.confirm}><Checkbox checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)}/><span>I confirm this is a Webull PaperTrade order. {longOnly?"SELL is exit-only; TradeCUE will not open a short position.":""}</span></label>
 
     <div className={styles.actions}>
       <Button disabled={!valid||paper.place.isPending} onClick={submit}>{paper.place.isPending?"Submitting…":"Submit paper order"}</Button>
@@ -110,4 +128,3 @@ export function PaperOrderPanel({
     </div>
   </section>;
 }
-
