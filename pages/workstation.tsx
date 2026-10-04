@@ -386,6 +386,7 @@ export default function WorkstationPage() {
               />
               <CueHunterPanel
                 enabled={Boolean(webull.account.data)}
+                maxRiskPerTrade={risk?.maxRiskPerTrade}
                 onOpenSymbol={(nextSymbol) => {
                   setSymbol(nextSymbol);
                   setSymbolDraft(nextSymbol);
