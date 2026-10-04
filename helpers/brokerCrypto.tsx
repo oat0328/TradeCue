@@ -8,18 +8,27 @@ import {
 
 const TOKEN_CONTEXT = "cuetrade-broker-token-v1";
 
-function tokenKey() {
+function deriveTokenKey(secret:string) {
+  return createHash("sha256").update(secret + ":" + TOKEN_CONTEXT).digest();
+}
+
+function encryptionKey() {
   const env = process.env as Record<string,string|undefined>;
   const secret = env.BROKER_ENCRYPTION_KEY || env.JWT_SECRET;
   if (!secret) throw new Error("BROKER_ENCRYPTION_KEY is not configured");
-  // JWT_SECRET remains a temporary backwards-compatible fallback so existing
-  // encrypted Webull credentials are not stranded during rollout.
-  return createHash("sha256").update(secret + ":" + TOKEN_CONTEXT).digest();
+  return deriveTokenKey(secret);
+}
+
+function decryptionKeys() {
+  const env = process.env as Record<string,string|undefined>;
+  const secrets=[env.BROKER_ENCRYPTION_KEY,env.JWT_SECRET].filter((value,index,array):value is string=>Boolean(value)&&array.indexOf(value)===index);
+  if(!secrets.length) throw new Error("BROKER_ENCRYPTION_KEY is not configured");
+  return secrets.map(deriveTokenKey);
 }
 
 export function encryptBrokerSecret(value: string) {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", tokenKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
   const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [iv.toString("base64url"), tag.toString("base64url"), encrypted.toString("base64url")].join(".");
@@ -28,12 +37,20 @@ export function encryptBrokerSecret(value: string) {
 export function decryptBrokerSecret(value: string) {
   const [ivText, tagText, payloadText] = value.split(".");
   if (!ivText || !tagText || !payloadText) throw new Error("Invalid encrypted broker secret");
-  const decipher = createDecipheriv("aes-256-gcm", tokenKey(), Buffer.from(ivText, "base64url"));
-  decipher.setAuthTag(Buffer.from(tagText, "base64url"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(payloadText, "base64url")),
-    decipher.final(),
-  ]).toString("utf8");
+  let lastError:unknown=null;
+  for(const key of decryptionKeys()){
+    try{
+      const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivText, "base64url"));
+      decipher.setAuthTag(Buffer.from(tagText, "base64url"));
+      return Buffer.concat([
+        decipher.update(Buffer.from(payloadText, "base64url")),
+        decipher.final(),
+      ]).toString("utf8");
+    }catch(error){
+      lastError=error;
+    }
+  }
+  throw lastError instanceof Error?lastError:new Error("Unable to decrypt broker secret");
 }
 
 export function hashOauthState(value: string) {
