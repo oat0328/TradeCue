@@ -23,7 +23,7 @@ describe("chartMath indicators",()=>{
   it("calculates moving averages without future values",()=>{
     const ema9=emaSeries(values,9);
     const sma50=smaSeries(values,50);
-    expect(ema9.slice(0,8).every(value=>value===null)).toBeTrue();
+    expect(ema9.slice(0,8).every(value=>value===null)).toBe(true);
     expect(ema9[8]).not.toBeNull();
     expect(sma50[48]).toBeNull();
     expect(sma50[49]).not.toBeNull();
@@ -32,8 +32,8 @@ describe("chartMath indicators",()=>{
   it("calculates bounded RSI and positive ATR",()=>{
     const rsi=rsiSeries(values,14).filter((value):value is number=>value!==null);
     const atr=atrSeries(candles,14).filter((value):value is number=>value!==null);
-    expect(rsi.every(value=>value>=0&&value<=100)).toBeTrue();
-    expect(atr.every(value=>value>0)).toBeTrue();
+    expect(rsi.every(value=>value>=0&&value<=100)).toBe(true);
+    expect(atr.every(value=>value>0)).toBe(true);
   });
 
   it("calculates Bollinger bands and MACD only after enough history",()=>{
