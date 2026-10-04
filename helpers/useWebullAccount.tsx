@@ -11,16 +11,17 @@ export function useWebullAccount(enabled:boolean,symbol:string,timeframe:string,
    queryFn:()=>getWebullAccount(accountId),
    enabled,
    retry:false,
-   staleTime:10_000,
-   refetchInterval:20_000,
+   staleTime:30_000,
+   refetchInterval:60_000,
+   refetchIntervalInBackground:false,
  });
  const bars=useQuery({
    queryKey:["webull","bars",symbol,timeframe],
    queryFn:()=>getWebullBars(symbol,timeframe),
    enabled:enabled&&!!account.data,
    retry:false,
-   staleTime:5_000,
-   refetchInterval:10_000,
+   staleTime:10_000,
+   refetchInterval:15_000,
    refetchIntervalInBackground:false,
  });
  const connect=useMutation({
