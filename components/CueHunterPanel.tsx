@@ -40,8 +40,8 @@ export function CueHunterPanel({
     <div className={styles.head}>
       <div>
         <small>CUE HUNTER</small>
-        <h2>Opportunity Hunt</h2>
-        <p>Auto-scans Webull every 60s · 5m + 15m + 1H alignment.</p>
+        <h2>{hunter.data?.marketMode==="WEEKEND_PREP"?"Monday Prep Hunter":"Opportunity Hunt"}</h2>
+        <p>{hunter.data?.marketMode==="WEEKEND_PREP"?"Ranks Friday-close setups for Monday review. No stock Entry Ready while the market is closed.":"Auto-scans Webull every 60s · 5m + 15m + 1H alignment."}</p>
       </div>
       <div className={styles.liveState}><span/><strong>{hunter.isFetching?"SCANNING":"AUTO ON"}</strong></div>
     </div>
@@ -64,7 +64,7 @@ export function CueHunterPanel({
 
     {top&&<button className={top.action==="ENTRY_READY"?styles.heroReady:styles.hero} onClick={()=>onOpenSymbol(top.symbol)}>
       <div className={styles.heroSignal}>
-        <span>{top.action==="ENTRY_READY"?"TOP ENTRY":"TOP WATCH"}</span>
+        <span>{hunter.data?.marketMode==="WEEKEND_PREP"?"TOP MONDAY WATCH":top.action==="ENTRY_READY"?"TOP ENTRY":"TOP WATCH"}</span>
         <strong>{top.symbol}</strong>
         <em>{top.action.replace("_"," ")}</em>
       </div>
@@ -85,7 +85,8 @@ export function CueHunterPanel({
 
     {hunter.data&&<>
       <div className={styles.meta}>
-        <span><Activity size={12}/>Universe <strong>{hunter.data.universeCount}</strong></span>
+        <span><Activity size={12}/>{hunter.data.marketMode.replace("_"," ")} <strong>AUTO</strong></span>
+        <span>Universe <strong>{hunter.data.universeCount}</strong></span>
         <span>Deep-check <strong>{hunter.data.evaluatedCount}</strong></span>
         <span>QQQ <strong>{hunter.data.marketContext.changePercent==null?"—":(hunter.data.marketContext.changePercent>=0?"+":"")+hunter.data.marketContext.changePercent.toFixed(2)+"%"}</strong></span>
         <span>Showing <strong>{hunter.data.rows.length}</strong></span>
@@ -118,4 +119,3 @@ export function CueHunterPanel({
     </>}
   </section>;
 }
-
