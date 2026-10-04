@@ -5,6 +5,7 @@ import { effectiveMembership } from "../../helpers/effectiveMembership";
 import { placeWebullPaperOrder, previewWebullPaperOrder, userKeys } from "../../helpers/webullClient";
 import type { Json } from "../../helpers/schema";
 import { schema } from "./paper-order_POST.schema";
+import { enforcePaperOrderRisk } from "../../helpers/riskFirewall";
 
 export async function handle(request:Request){
   try{
@@ -22,6 +23,11 @@ export async function handle(request:Request){
       quantity:input.quantity,
       limitPrice:input.limitPrice,
     };
+    const riskCheck=await enforcePaperOrderRisk({
+      userId:user.id,
+      keys,
+      input:{...orderInput,tradeMode:input.tradeMode},
+    });
     await previewWebullPaperOrder(keys,orderInput);
     const result=await placeWebullPaperOrder(keys,orderInput);
 
@@ -75,6 +81,7 @@ export async function handle(request:Request){
       orderType:input.orderType,
       quantity:input.quantity,
       status,
+      riskCheck,
     });
   }catch(error){
     return apiFailure(error);
