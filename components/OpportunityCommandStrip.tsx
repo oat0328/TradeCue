@@ -12,6 +12,15 @@ function money(value:number|null|undefined){
 function pct(value:number|null|undefined){
   return value==null||!Number.isFinite(value)?"—":(value>=0?"+":"")+value.toFixed(2)+"%";
 }
+function sparklinePoints(values:number[]){
+  if(values.length<2)return "";
+  const min=Math.min(...values),max=Math.max(...values),range=Math.max(max-min,0.000001);
+  return values.map((value,index)=>{
+    const x=index/(values.length-1)*100;
+    const y=28-((value-min)/range)*24;
+    return x.toFixed(1)+","+y.toFixed(1);
+  }).join(" ");
+}
 
 export function OpportunityCommandStrip({
   enabled,
@@ -67,6 +76,9 @@ export function OpportunityCommandStrip({
           <Badge variant={row.action==="ENTRY_READY"?"success":row.action==="WATCH"?"outline":"warning"}>{row.action==="ENTRY_READY"?"TRADE":row.action}</Badge>
         </div>
         <div className={styles.priceLine}><strong>{money(row.price)}</strong><em className={(row.changePercent??0)>=0?styles.up:styles.down}>{pct(row.changePercent)}</em></div>
+        {row.sparkline.length>1&&<svg className={styles.sparkline} viewBox="0 0 100 30" preserveAspectRatio="none" aria-label={row.symbol+" recent Webull price sparkline"}>
+          <polyline points={sparklinePoints(row.sparkline)} fill="none" vectorEffect="non-scaling-stroke"/>
+        </svg>}
         <div className={styles.scoreLine}><span>CUE <b>{row.cueScore??"—"}</b></span><span>MTF <b>{row.timeframeScores.bullishFrames}/3</b></span><span>RVOL <b>{row.relativeVolume==null?"—":row.relativeVolume.toFixed(1)+"×"}</b></span></div>
         <div className={styles.meter}><span style={{width:Math.max(0,Math.min(100,row.cueScore??0))+"%"}}/></div>
         <div className={styles.footer}><span>{row.riskShares!=null&&row.riskShares>0?row.riskShares+" sh risk-size":row.action==="ENTRY_READY"?"Check sizing":"Open chart"}</span><Crosshair size={13}/></div>
