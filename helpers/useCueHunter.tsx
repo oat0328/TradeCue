@@ -15,8 +15,8 @@ export function useCueHunter(enabled:boolean,filters:HunterFilters){
     queryFn:()=>getHunterScan(filters),
     enabled,
     retry:false,
-    staleTime:30_000,
-    refetchInterval:60_000,
+    staleTime:60_000,
+    refetchInterval:90_000,
     refetchIntervalInBackground:true,
   });
 }
