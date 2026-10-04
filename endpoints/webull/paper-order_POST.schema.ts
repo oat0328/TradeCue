@@ -23,6 +23,15 @@ export type OutputType = {
   orderType: "MARKET"|"LIMIT";
   quantity: number;
   status: string;
+  riskCheck?: {
+    allowed: true;
+    mode: string;
+    plannedRisk: number | null;
+    referencePrice: number | null;
+    stop: number | null;
+    signalScore: number | null;
+    fresh: boolean | null;
+  };
 };
 
 export async function postPaperOrder(body:z.infer<typeof schema>):Promise<OutputType>{
