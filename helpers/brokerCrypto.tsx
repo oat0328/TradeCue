@@ -9,8 +9,11 @@ import {
 const TOKEN_CONTEXT = "cuetrade-broker-token-v1";
 
 function tokenKey() {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET is not configured");
+  const env = process.env as Record<string,string|undefined>;
+  const secret = env.BROKER_ENCRYPTION_KEY || env.JWT_SECRET;
+  if (!secret) throw new Error("BROKER_ENCRYPTION_KEY is not configured");
+  // JWT_SECRET remains a temporary backwards-compatible fallback so existing
+  // encrypted Webull credentials are not stranded during rollout.
   return createHash("sha256").update(secret + ":" + TOKEN_CONTEXT).digest();
 }
 
