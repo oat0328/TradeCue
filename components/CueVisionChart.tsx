@@ -88,6 +88,7 @@ export default function CueVisionChart({
   const [lesson, setLesson] = useState<keyof typeof lessons>("candles");
   const [showZones, setShowZones] = useState(true);
   const [showLevels, setShowLevels] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [indicators, setIndicators] = useState(
     () => new Set(["VWAP", "VOLUME", "EMA9", "EMA20", "BOLL", "RSI"]),
   );
@@ -98,6 +99,14 @@ export default function CueVisionChart({
     setOffset(0);
     setSelected(null);
   }, [symbol, timeframe]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey=(event:KeyboardEvent)=>{ if(event.key==="Escape") setExpanded(false); };
+    document.body.style.overflow="hidden";
+    window.addEventListener("keydown",onKey);
+    return ()=>{ document.body.style.overflow=""; window.removeEventListener("keydown",onKey); };
+  }, [expanded]);
 
   const all = useMemo(
     () =>
@@ -360,7 +369,7 @@ export default function CueVisionChart({
   );
 
   return (
-    <div className={styles.wrap} id="chart-coach">
+    <div className={expanded ? styles.wrap+" "+styles.expanded : styles.wrap} id="chart-coach">
       <div className={styles.toolbar}>
         <div className={styles.group}>
           {(["candles", "heikin", "ohlc"] as const).map((chartStyle) => (
@@ -541,6 +550,7 @@ export default function CueVisionChart({
               " chart. Drag to pan; use controls or arrow keys to inspect."
             }
             tabIndex={0}
+            onDoubleClick={()=>setExpanded(value=>!value)}
             onPointerDown={(event) => {
               drag.current = { x: event.clientX, offset: safeOffset };
               event.currentTarget.setPointerCapture(event.pointerId);
