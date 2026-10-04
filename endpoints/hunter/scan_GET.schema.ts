@@ -42,6 +42,7 @@ export type HunterRow = {
     bullishFrames:number;
   };
   marketChangePercent:number|null;
+  sparkline:number[];
 };
 
 export type OutputType = {
