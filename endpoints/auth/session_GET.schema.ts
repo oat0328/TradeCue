@@ -27,4 +27,3 @@ export const getSession = async (
   });
   return superjson.parse<OutputType>(await result.text());
 };
-

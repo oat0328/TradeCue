@@ -49,11 +49,12 @@ export function easternMinute(time?:string){
 }
 
 export const chartZones=[
-  {key:"asia",label:"Asia",start:1140,end:1320,time:"7–10 PM ET"},
-  {key:"london",label:"London",start:120,end:300,time:"2–5 AM ET"},
-  {key:"nyam",label:"New York AM",start:420,end:600,time:"7–10 AM ET"},
-  {key:"londonclose",label:"London Close",start:600,end:720,time:"10 AM–12 PM ET"},
-  {key:"nypm",label:"New York PM",start:810,end:960,time:"1:30–4 PM ET"},
+  {key:"premarket",label:"Premarket",start:240,end:570,time:"4–9:30 AM ET"},
+  {key:"open",label:"Opening Drive",start:570,end:660,time:"9:30–11 AM ET"},
+  {key:"midday",label:"Midday",start:660,end:810,time:"11 AM–1:30 PM ET"},
+  {key:"afternoon",label:"Afternoon",start:810,end:900,time:"1:30–3 PM ET"},
+  {key:"power",label:"Power Hour",start:900,end:960,time:"3–4 PM ET"},
+  {key:"after",label:"After Hours",start:960,end:1200,time:"4–8 PM ET"},
 ];
 
 export function smaSeries(values:number[],period:number):(number|null)[]{
@@ -166,4 +167,3 @@ export function macdSeries(values:number[],fast=12,slow=26,signalPeriod=9){
   });
   return {line,signal,histogram};
 }
-

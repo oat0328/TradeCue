@@ -34,4 +34,3 @@ export const postLogin = async (
 
   return superjson.parse<OutputType>(await result.text());
 };
-

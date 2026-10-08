@@ -2,7 +2,6 @@ import React from "react";
 import { Check, CircleAlert, X } from "lucide-react";
 import { Badge } from "./Badge";
 import type { CueSignal, CueSignalUnavailable } from "../helpers/cueSignal";
-import { buildTradeDecision } from "../helpers/tradeDecision";
 import styles from "./CueCheatSheet.module.css";
 
 function passIcon(pass:boolean){return pass?<Check size={13}/>:<X size={13}/>;}
@@ -18,8 +17,6 @@ export function CueCheatSheet({
   fresh,
   hasPosition,
   intelligence,
-  marketActive,
-  marketLabel,
 }:{
   symbol:string;
   timeframe:string;
@@ -33,22 +30,10 @@ export function CueCheatSheet({
     marketChangePercent:number|null;
     action:"ENTRY_READY"|"WAIT"|"AVOID";
   }|null;
-  marketActive:boolean;
-  marketLabel:string;
 }){
   if(!signal.available){
     return <div className={styles.empty}><CircleAlert size={15}/><span>Need more Webull candles before TradeCUE can score this chart.</span></div>;
   }
-
-  const tradeDecision=buildTradeDecision({
-    signal,
-    intelligenceAction:intelligence?.action??null,
-    currentPrice:signal.metrics.close,
-    fresh,
-    hasPosition,
-    marketActive,
-    marketLabel,
-  });
 
   const checks=[
     {label:"Trend",value:signal.componentScores.trend,pass:signal.componentScores.trend>=65},
@@ -69,7 +54,7 @@ export function CueCheatSheet({
 
   return <section className={styles.sheet}>
     <div className={styles.head}>
-      <div><small>PROFESSOR CUE • CURRENT CHART</small><strong>{symbol} · {timeframe}</strong></div>
+      <div><small>TECHNICAL SCORECARD</small><strong>{symbol} · {timeframe}</strong></div>
       <Badge variant={variant as any}>{headline}</Badge>
     </div>
     <div className={styles.checks}>
@@ -94,23 +79,11 @@ export function CueCheatSheet({
       <span><b>Stop</b>{money(signal.plan.stop)}</span>
       <span><b>Target</b>{money(signal.plan.target2)}</span>
     </div>}
-    <div className={styles.decisionNow}>
-      <small>WHEN TO ACT</small>
-      <strong>{tradeDecision.headline}</strong>
-      <p>{tradeDecision.instruction}</p>
-    </div>
-    {tradeDecision.entry&&<div className={styles.actionLevels}>
-      <span><b>ENTER</b>{money(tradeDecision.entry.low)}–{money(tradeDecision.entry.high)}</span>
-      <span><b>STOP / EXIT</b>{money(tradeDecision.stop)}</span>
-      <span><b>TP1</b>{money(tradeDecision.targets?.t1)}</span>
-      <span><b>TP2</b>{money(tradeDecision.targets?.t2)}</span>
-      <span><b>TP3</b>{money(tradeDecision.targets?.t3)}</span>
-    </div>}
     <div className={styles.playbook}>
-      <span><b>ENTER</b> Only when price is inside the entry zone + fresh MTF confirmation says Entry Ready.</span>
-      <span><b>DON'T CHASE</b> Above the entry zone = wait for pullback/retest.</span>
-      <span><b>PROTECT</b> Stop level is the invalidation point; do not move it farther just to avoid a loss.</span>
-      <span><b>EXIT</b> Stop breach = exit plan. TP1/TP2/TP3 = planned profit-management checkpoints.</span>
+      <span><b>BUY</b> All core checks green + fresh data + MTF confirms</span>
+      <span><b>WAIT</b> Any core check fails, data is stale, or price is extended</span>
+      <span><b>HOLD</b> You own it and the setup remains constructive</span>
+      <span><b>STAY AWAY / EXIT</b> Avoid new longs when conditions are weak; review exits if already in the position</span>
     </div>
   </section>;
 }

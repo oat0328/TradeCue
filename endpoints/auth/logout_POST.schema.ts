@@ -29,4 +29,3 @@ export const postLogout = async (
   });
   return superjson.parse<OutputType>(await result.text());
 };
-

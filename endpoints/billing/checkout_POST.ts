@@ -37,4 +37,3 @@ export async function handle(request:Request){try{
  return {url:session.url,testMode:!config.live};
  });return apiJson(output);
 }catch(e){return apiFailure(e);}}
-

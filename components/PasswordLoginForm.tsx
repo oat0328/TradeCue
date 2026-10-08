@@ -122,4 +122,3 @@ export const PasswordLoginForm: React.FC<PasswordLoginFormProps> = ({
     </Form>
   );
 };
-

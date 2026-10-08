@@ -15,4 +15,3 @@
 .error{color:var(--error)}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.grid{grid-template-columns:1fr}.panel{padding:16px}.head{display:block}}
-

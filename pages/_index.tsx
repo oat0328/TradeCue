@@ -1,15 +1,21 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import {
+  Activity,
   ArrowRight,
   BarChart3,
-  Bitcoin,
+  BookOpen,
+  Bot,
   BrainCircuit,
-  LineChart,
+  CandlestickChart,
+  CheckCircle2,
+  Crosshair,
+  Gauge,
   Newspaper,
   Radar,
   ShieldCheck,
   Sparkles,
+  Target,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "../components/Button";
@@ -22,164 +28,200 @@ const plans = [
     key: "scout",
     name: "Scout",
     price: "$39",
-    line: "Teach me. Help me build the habit.",
-    features: ["Cue Radar Lite", "Professor Cue", "Paper trading", "Basic alerts", "Growth Path"],
+    line: "Learn the chart. Build discipline.",
+    features: ["Professional chart", "Professor Cue", "Paper trading", "Trade Journal", "Risk basics"],
   },
   {
     key: "copilot",
-    name: "Copilot",
+    name: "Command",
     price: "$129",
-    line: "Trade beside me. Explain every decision.",
-    features: ["Full Cue Radar", "Cue Vision", "Fundamental Intelligence", "Risk Firewall", "Webull-ready desk"],
+    line: "Analyze the market with Omega beside you.",
+    features: ["Market Scanner", "Omega outlook", "News & Catalysts", "Portfolio Brain", "Full Order Ticket"],
     featured: true,
   },
   {
     key: "autopilot",
-    name: "Autopilot",
+    name: "Omega Pro",
     price: "$249",
-    line: "Run my approved system with me.",
-    features: ["Everything in Copilot", "Strategy Lab", "CueFutures", "CueCrypto 24/7", "Automation controls"],
+    line: "Train the autonomous PaperTrade operator.",
+    features: ["Everything in Command", "Paper calibration mode", "Learning Engine", "Strategy Lab", "Automation controls"],
   },
 ];
 
 const featureCards = [
-  { icon: Radar, title: "Cue Radar", text: "Scans for setups that fit your money, timeframe, risk rules, and long-only Green Gate." },
-  { icon: LineChart, title: "Cue Vision", text: "Multi-timeframe chart intelligence that explains what is happening instead of just drawing lines." },
-  { icon: Newspaper, title: "Fundamental Intelligence", text: "Earnings, guidance, SEC filings, analyst moves, macro events, and catalysts translated into trade impact." },
-  { icon: BrainCircuit, title: "Professor Cue", text: "Learns with you in real time: why the setup matters, what could fail, and which timeframe actually matters." },
-  { icon: ShieldCheck, title: "Risk Firewall", text: "No-chase logic, max risk, daily loss limits, stop planning, and a hard bias toward protecting capital." },
-  { icon: Bitcoin, title: "CueCrypto", text: "A 24/7 crypto desk with the same READY / WAIT / EXTENDED framework and education layer." },
+  { icon: Radar, title: "Market Scanner", text: "Scans the liquid large-cap universe, top gainers and active names, then requires 1H + 15m trend alignment before a 5m entry can qualify." },
+  { icon: Bot, title: "Omega", text: "TradeCUE's execution intelligence. It scans, waits, enters simulated trades, manages risk, exits, and records the result." },
+  { icon: BrainCircuit, title: "Professor Cue", text: "Explains structure, EMA20, VWAP, volume, pullback, confirmation, stop, ATR and the 2R training target directly beside the chart." },
+  { icon: Newspaper, title: "News & Catalysts", text: "Current headlines and macro risk live on the command center so price action and catalysts are read together." },
+  { icon: ShieldCheck, title: "Risk Firewall", text: "No chasing, no averaging down, hard position limits, stop validation, daily-loss controls, and an emergency kill switch." },
+  { icon: BarChart3, title: "Performance Engine", text: "Tracks resolved PaperTrades, expectancy, profit factor, average R, losing streaks, and which setups actually work." },
+];
+
+const workflow = [
+  { icon: Radar, step: "01", title: "Scan", text: "Find liquid names where price, volume, breadth and market direction create a real opportunity." },
+  { icon: CandlestickChart, step: "02", title: "Read", text: "Require bullish 1H + 15m context, then read the 5m HH/HL + EMA20 + VWAP + pullback setup." },
+  { icon: Crosshair, step: "03", title: "Enter", text: "Only enter inside the planned zone after confirmation. Late location or poor reward/risk means wait." },
+  { icon: Target, step: "04", title: "Manage", text: "Original stop and targets stay attached to the trade. Position monitoring watches for invalidation." },
+  { icon: TrendingUp, step: "05", title: "Exit + learn", text: "Close the trade, journal the fill, calculate R and P/L, then feed the result back into the training gate." },
 ];
 
 export default function HomePage() {
-  const revealPain = useScrollReveal();
+  const revealSystem = useScrollReveal();
+  const revealWorkflow = useScrollReveal();
   const revealFeatures = useScrollReveal();
   const revealPricing = useScrollReveal();
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Link to="/" className={styles.brand} aria-label="TradeCue home">
-          <span className={styles.logoBars}><i /><i /><i /></span>
-          <span>
-            <strong>Trade<span>Cue</span></strong>
-            <small>AI MARKET COPILOT</small>
-          </span>
+        <Link to="/" className={styles.brand} aria-label="TradeCUE home">
+          <span className={styles.logoBars}><i/><i/><i/></span>
+          <span><strong>Trade<span>CUE</span></strong><small>AI TRADING WORKSTATION</small></span>
         </Link>
         <nav className={styles.nav}>
-          <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
-          <Link to="/login?tier=copilot">Member workstation</Link>
+          <a href="#system">System</a>
+          <a href="#workflow">How it works</a>
+          <a href="#features">Tools</a>
+          <a href="#pricing">Plans</a>
         </nav>
         <div className={styles.headerActions}>
           <Button variant="outline" size="sm" asChild><Link to="/login">Log in</Link></Button>
-          <Button size="sm" asChild><Link to="/login?tier=copilot">Start 30-day trial</Link></Button>
+          <Button size="sm" asChild><Link to="/login?tier=copilot">Open TradeCUE</Link></Button>
         </div>
       </header>
 
       <main>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <Badge variant="outline" className={styles.heroBadge}><Sparkles size={13} /> AI-powered market workstation</Badge>
-            <h1>Stop guessing<br />with <em>your money.</em></h1>
+            <Badge variant="outline" className={styles.heroBadge}><Sparkles size={13}/> TRADECUE · OMEGA · PROFESSOR CUE</Badge>
+            <h1>See the chart.<br/><em>Know the trade.</em></h1>
             <p>
-              TradeCue watches the market, explains what matters, filters opportunities to your capital,
-              and teaches you while you trade.
+              Scan market opportunities, understand stock charts, plan your risk, and track paper trades
+              in one AI-assisted trading workstation.
             </p>
             <div className={styles.heroActions}>
-              <Button size="lg" asChild><Link to="/login?tier=copilot">Start with what I have <ArrowRight size={17} /></Link></Button>
-              <Button variant="outline" size="lg" asChild><Link to="/workstation?tier=copilot">See TradeCue in action</Link></Button>
+              <Button size="lg" asChild><Link to="/login?tier=copilot">Enter the command center <ArrowRight size={17}/></Link></Button>
+              <Button variant="outline" size="lg" asChild><Link to="/workstation">View workstation</Link></Button>
             </div>
             <div className={styles.heroMeta}>
-              <span>30-day free trial</span><span>Paper first</span><span>Long-only Green Gate</span>
+              <span>Paper-first training</span><span>Webull-connected</span><span>Hard risk controls</span><span>No fabricated performance</span>
             </div>
           </div>
 
           <div className={styles.heroTerminal}>
             <div className={styles.terminalTop}>
-              <span>COMMAND CENTER</span>
-              <Badge variant="outline">PRODUCT PREVIEW</Badge>
+              <span>TRADECUE COMMAND CENTER</span>
+              <Badge variant="success">PAPER TRAINING</Badge>
             </div>
-            <div className={styles.marketStrip}>
-              <div><small>SPY</small><strong>Webull</strong><span>after sign-in</span></div>
-              <div><small>QQQ</small><strong>Webull</strong><span>after sign-in</span></div>
-              <div><small>WATCHING</small><strong>Your list</strong><span>live when connected</span></div>
+            <div className={styles.terminalGrid}>
+              <div className={styles.demoChart}>
+                <div className={styles.demoChartHead}>
+                  <div><small>NVDA · 5m</small><strong>$234.22 <span>DEMO</span></strong></div>
+                  <Badge variant="warning">WAIT</Badge>
+                </div>
+                <div className={styles.chartCanvas}>
+                  <div className={styles.gridLines}/>
+                  <svg viewBox="0 0 760 300" role="img" aria-label="Illustrative TradeCUE chart">
+                    <path d="M0 92 C55 105 78 168 118 151 S174 177 222 190 S297 196 351 194 S415 181 469 185 S535 167 591 158 S657 146 760 140" fill="none" stroke="var(--chart-color-1)" strokeWidth="4"/>
+                    <path d="M0 74 C74 112 138 143 220 165 S383 184 492 178 S644 155 760 149" fill="none" stroke="var(--chart-color-3)" strokeWidth="3"/>
+                    <line x1="0" x2="760" y1="126" y2="126" stroke="rgba(255,193,71,.75)" strokeDasharray="7 7"/>
+                    <line x1="0" x2="760" y1="178" y2="178" stroke="rgba(44,220,171,.72)" strokeDasharray="7 7"/>
+                    {[24,58,91,127,167,210,249,294,338,379,424,468,513,555,602,649,699,739].map((x,i)=><rect key={x} x={x} y={245-(i%5)*8} width="9" height={35+(i%5)*8} rx="2" fill={i%3===0?"rgba(255,255,255,.88)":"rgba(203,216,226,.62)"}/>)}
+                  </svg>
+                  <span className={styles.resistance}>RESISTANCE</span>
+                  <span className={styles.support}>SUPPORT</span>
+                </div>
+                <div className={styles.professorStrip}>
+                  <BrainCircuit size={18}/>
+                  <div><small>PROFESSOR CUE</small><strong>Why Omega is waiting</strong><p>Price is below short-term resistance, momentum is mixed, and the entry location is not clean enough yet. Wait for structure + volume confirmation.</p></div>
+                </div>
+              </div>
+
+              <aside className={styles.demoOmega}>
+                <div className={styles.axiomHead}><Bot size={20}/><div><small>OMEGA</small><strong>CALIBRATING</strong></div><span>82+ gate</span></div>
+                <div className={styles.flow}><b>SCAN</b><i>→</i><b>ENTER</b><i>→</i><b>MANAGE</b><i>→</i><b>EXIT</b></div>
+                <div className={styles.demoStats}>
+                  <span><small>Paper capital</small><strong>Scales to account</strong></span>
+                  <span><small>Max positions</small><strong>2</strong></span>
+                  <span><small>Resolved trades</small><strong>0</strong></span>
+                  <span><small>Mode</small><strong>PAPER</strong></span>
+                </div>
+                <div className={styles.axiomRead}><Activity size={15}/><p>Protect capital first. No clean edge means no trade.</p></div>
+              </aside>
             </div>
-            <div className={styles.tradePanel}>
-              <div className={styles.chartHead}>
-                <div><small>CUE VISION • CONNECTED MARKET DATA</small><strong>Real prices after sign-in</strong></div>
-                <Badge variant="outline">WAITING FOR DATA</Badge>
-              </div>
-              <div className={styles.chart}>
-                <span className={styles.target}>TARGET 2</span>
-                <span className={styles.entry}>ENTRY ZONE</span>
-                <span className={styles.stop}>STOP</span>
-                <svg viewBox="0 0 720 260" role="img" aria-label="Illustrative TradeCUE interface preview">
-                  <path d="M0 208 C55 188 89 224 132 175 S206 182 248 148 S320 170 372 104 S462 121 518 88 S607 99 720 50" fill="none" stroke="var(--chart-color-1)" strokeWidth="5"/>
-                  <path d="M0 223 C120 214 205 194 302 172 S494 135 720 102" fill="none" stroke="var(--chart-color-3)" strokeWidth="3" strokeDasharray="10 7"/>
-                  <line x1="0" x2="720" y1="69" y2="69" stroke="var(--success)" strokeDasharray="7 7"/>
-                  <line x1="0" x2="720" y1="217" y2="217" stroke="var(--error)" strokeDasharray="7 7"/>
-                </svg>
-              </div>
-              <div className={styles.aiNote}>
-                <BrainCircuit size={18} />
-                <div><strong>Professor Cue</strong><p>When Webull is connected, this panel explains the current chart, what confirms an entry, what blocks it, and where risk changes the decision.</p></div>
-              </div>
-            </div>
+            <p className={styles.demoDisclaimer}>Illustrative interface — prices and demo metrics shown here are not live quotes or performance claims.</p>
           </div>
         </section>
 
-        <section ref={revealPain} className={styles.problemGrid + " " + styles.reveal}>
-          <article><small>THE PAIN</small><h2>Noise makes money feel harder than it is.</h2><p>Too many opinions, too many indicators, and no clear reason to act or wait.</p></article>
-          <article><small>THE RELIEF</small><h2>Cue tells you what matters now.</h2><p>Price, fundamentals, news, risk, timeframe, and capital fit become one clear decision.</p></article>
-          <article><small>THE GOAL</small><h2>Build skill before you scale size.</h2><p>Protect the bag, learn the setup, track your growth, and earn the right to take more risk.</p></article>
+        <section id="system" ref={revealSystem} className={styles.system + " " + styles.reveal}>
+          <div className={styles.sectionHead}>
+            <span>ONE PLATFORM · THREE CLEAR ROLES</span>
+            <h2>No more dashboard full of random AI names.</h2>
+            <p>TradeCUE is the platform. Omega is the trading intelligence. Professor Cue is the teacher.</p>
+          </div>
+          <div className={styles.roleGrid}>
+            <article><Gauge size={22}/><small>THE PLATFORM</small><h3>TradeCUE</h3><p>Command center, chart, scanner, news, journal, risk, execution, strategy lab, and performance tracking.</p></article>
+            <article className={styles.roleFeatured}><Bot size={22}/><small>THE OPERATOR</small><h3>Omega</h3><p>Reads setups, waits for confirmation, sizes PaperTrades, manages positions, exits when the plan breaks, and learns from resolved results.</p></article>
+            <article><BrainCircuit size={22}/><small>THE TEACHER</small><h3>Professor Cue</h3><p>Explains the chart underneath the chart so you understand why the system says enter, wait, hold, or exit.</p></article>
+          </div>
+        </section>
+
+        <section id="workflow" ref={revealWorkflow} className={styles.section + " " + styles.reveal}>
+          <div className={styles.sectionHead}>
+            <span>THE OMEGA LOOP</span>
+            <h2>Read first. Risk second. Trade third.</h2>
+            <p>Omega does not get rewarded for taking more trades. It records weak evidence and recommends changes, but never rewrites the approved strategy automatically.</p>
+          </div>
+          <div className={styles.workflow}>
+            {workflow.map(({icon:Icon,step,title,text})=><article key={step}><div className={styles.stepTop}><span>{step}</span><Icon size={20}/></div><h3>{title}</h3><p>{text}</p></article>)}
+          </div>
+          <div className={styles.trainingBanner}>
+            <ShieldCheck size={22}/>
+            <div><small>PAPER CALIBRATION PROFILE</small><strong>Calibration starts conservative.</strong><p>1H + 15m trend context · 5m execution · rising EMA20 + VWAP + volume · pullback + confirmation · protected stop · 2R training target · maximum 2 simultaneous positions.</p></div>
+            <Badge variant="success">CAPITAL FIRST</Badge>
+          </div>
         </section>
 
         <section id="features" ref={revealFeatures} className={styles.section + " " + styles.reveal}>
           <div className={styles.sectionHead}>
-            <span>ONE ENGINE • MULTIPLE WORKSTATIONS</span>
-            <h2>Stocks, ETFs, crypto, futures — taught by the same Cue brain.</h2>
+            <span>THE COMMAND CENTER</span>
+            <h2>Only tools that help make or manage a decision.</h2>
           </div>
           <div className={styles.features}>
-            {featureCards.map(({ icon: Icon, title, text }) => (
-              <article key={title}>
-                <div className={styles.iconBox}><Icon size={20} /></div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </article>
-            ))}
+            {featureCards.map(({icon:Icon,title,text})=><article key={title}><div className={styles.iconBox}><Icon size={20}/></div><h3>{title}</h3><p>{text}</p></article>)}
           </div>
-          <div className={styles.marketFamily}>
-            <div><BarChart3 size={18} /><strong>CueStocks</strong><span>Stocks + ETFs</span></div>
-            <div><Bitcoin size={18} /><strong>CueCrypto</strong><span>24/7 crypto</span></div>
-            <div><TrendingUp size={18} /><strong>CueFutures</strong><span>Futures workstation</span></div>
-            <div><ShieldCheck size={18} /><strong>CueOptions</strong><span>Advanced access</span></div>
-          </div>
+        </section>
+
+        <section className={styles.proof}>
+          <div><CheckCircle2 size={18}/><span><strong>Paper before live</strong><small>Train without risking capital</small></span></div>
+          <div><CheckCircle2 size={18}/><span><strong>Measured learning</strong><small>Expectancy, profit factor, R, streaks</small></span></div>
+          <div><CheckCircle2 size={18}/><span><strong>Kill switch</strong><small>Stop automated PaperTrade entries</small></span></div>
+          <div><CheckCircle2 size={18}/><span><strong>Professor underneath</strong><small>Chart explanation where it belongs</small></span></div>
         </section>
 
         <section id="pricing" ref={revealPricing} className={styles.section + " " + styles.reveal}>
           <div className={styles.sectionHead}>
-            <span>THE CHEVY CONCEPT</span>
-            <h2>Same engine. Different trim.</h2>
-            <p>Every plan runs on TradeCue. Higher tiers unlock deeper intelligence, more markets, and more control.</p>
+            <span>ACCESS</span>
+            <h2>Start with the workstation. Earn more automation with evidence.</h2>
+            <p>Autonomous execution is currently PaperTrade training. Live-money orders remain approval-based.</p>
           </div>
           <div className={styles.pricing}>
-            {plans.map((plan) => (
-              <article key={plan.key} className={plan.featured ? styles.featuredPlan : undefined}>
-                {plan.featured && <Badge variant="primary">MOST POPULAR</Badge>}
-                <h3>{plan.name}</h3>
-                <div className={styles.price}>{plan.price}<span>/mo</span></div>
-                <p>{plan.line}</p>
-                <ul>{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
-                <Button variant={plan.key === "autopilot" ? "secondary" : "primary"} asChild>
-                  <Link to={"/login?tier=" + plan.key}>Start 30-day free trial</Link>
-                </Button>
-              </article>
-            ))}
+            {plans.map(plan=><article key={plan.key} className={plan.featured?styles.featuredPlan:undefined}>
+              {plan.featured&&<Badge variant="primary">COMMAND CENTER</Badge>}
+              <h3>{plan.name}</h3>
+              <div className={styles.price}>{plan.price}<span>/mo</span></div>
+              <p>{plan.line}</p>
+              <ul>{plan.features.map(feature=><li key={feature}>✓ {feature}</li>)}</ul>
+              <Button variant={plan.key==="autopilot"?"secondary":"primary"} asChild><Link to={"/login?tier="+plan.key}>Open TradeCUE</Link></Button>
+            </article>)}
           </div>
+        </section>
+
+        <section className={styles.finalCta}>
+          <div><small>TRADECUE</small><h2>Make the system prove itself.</h2><p>Train Omega in PaperTrade, learn the chart with Professor Cue, and scale only when the journal shows a real edge.</p></div>
+          <Button size="lg" asChild><Link to="/login?tier=copilot">Enter command center <ArrowRight size={17}/></Link></Button>
         </section>
       </main>
     </div>
   );
 }
-

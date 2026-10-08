@@ -22,4 +22,3 @@ export const tierRank = {scout:0,copilot:1,autopilot:2};
 export function isMembershipCurrent(m: {status:string;trialEndsAt:Date;currentPeriodEndsAt:Date|null}, now=new Date()) {
   return m.status === "trial" ? m.trialEndsAt > now : m.status === "active" && m.currentPeriodEndsAt !== null && m.currentPeriodEndsAt > now;
 }
-

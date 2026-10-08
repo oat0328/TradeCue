@@ -19,7 +19,6 @@ export function WebullPanel({webull,isOwner,onAccount,className=""}:{webull:Retu
  {!isOwner&&<Button size="sm" variant="ghost" disabled={disconnect.isPending} onClick={()=>disconnect.mutate()}>Remove saved keys</Button>}
  </>}
  {disconnect.error&&<p role="alert">{disconnect.error.message}</p>}
- <p className={styles.note}>Paper account only. Webull paper orders are enabled from the TradeCUE ticket; live-money orders and automated execution remain disabled. <Link to="/membership">Membership & coupons</Link>{isOwner&&<> · <Link to="/admin">Owner dashboard</Link></>}</p>
+ <p className={styles.note}>This panel is PaperTrade only. Live Webull is a separate connection and order ticket so paper automation can never be confused with real money. <Link to="/membership">Membership & coupons</Link>{isOwner&&<> · <Link to="/admin">Owner dashboard</Link></>}</p>
  </section>;
 }
-

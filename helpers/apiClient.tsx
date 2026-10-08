@@ -5,13 +5,14 @@ export async function readApiResponse<T>(response:Response,fallback:string):Prom
   let data:any=null;
   if(text){
     try{
-      data=superjson.parse<any>(text);
-    }catch{
-      try{
-        data=JSON.parse(text);
-      }catch{
-        throw new Error(response.ok?fallback:`${fallback} (HTTP ${response.status})`);
+      const raw=JSON.parse(text);
+      if(raw&&typeof raw==="object"&&Object.prototype.hasOwnProperty.call(raw,"json")){
+        data=superjson.deserialize(raw);
+      }else{
+        data=raw;
       }
+    }catch{
+      throw new Error(response.ok?fallback:`${fallback} (HTTP ${response.status})`);
     }
   }
   if(!response.ok){
@@ -19,4 +20,3 @@ export async function readApiResponse<T>(response:Response,fallback:string):Prom
   }
   return data as T;
 }
-

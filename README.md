@@ -57,3 +57,8 @@ Validated against the connected Webull PaperTrade/OpenAPI sandbox on 2026-10-03:
 - TradeCUE technical scores are computed locally from Webull candles; they are not broker-supplied win probabilities.
 - Heikin-Ashi, EMA/RSI/ATR, support/resistance, session ranges, entry/stop/target overlays, and CUE states are derived analytics built from the underlying Webull data.
 - Financial Modeling Prep news is not connected until FMP_API_KEY is configured.
+
+
+## Latest saved update
+
+The source includes confirmed entry/exit chart markers, per-sale gross P/L, partial-sale support, and Omega account/data/portfolio checks. See [the chart update and release notes](docs/OMEGA_CHART_UPDATE.md). The chart update has passed Floot validation but publishing is blocked by depleted hosting credits; this GitHub update does not deploy it.

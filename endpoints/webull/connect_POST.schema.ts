@@ -27,4 +27,3 @@ export async function postWebullConnect(init?: RequestInit): Promise<OutputType>
 
   return superjson.parse<OutputType>(await response.text());
 }
-

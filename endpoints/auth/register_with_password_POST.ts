@@ -13,10 +13,9 @@ import { addDuration } from "../../helpers/couponRules";
 export async function handle(request: Request) {
   try {
     const json = superjson.parse(await request.text());
-    const { email: rawEmail, password, displayName, ownerSetupCode, couponCode } = schema.parse(json);
-    const email = rawEmail.trim().toLowerCase();
+    const { email, password, displayName, ownerSetupCode, couponCode } = schema.parse(json);
 
-    // Check if email already exists using normalized identity semantics.
+    // Check if email already exists
     const existingUser = await db
       .selectFrom("users")
       .select("id")
@@ -239,4 +238,3 @@ export async function handle(request: Request) {
     );
   }
 }
-

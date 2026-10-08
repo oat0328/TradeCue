@@ -58,4 +58,3 @@ export async function handle(request: Request) {
     return new Response(superjson.stringify({ error: message }), { status: 401 });
   }
 }
-

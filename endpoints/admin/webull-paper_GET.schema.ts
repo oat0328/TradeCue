@@ -44,4 +44,3 @@ export const getOwnerWebullPaper = async (
 
   return superjson.parse<OutputType>(await response.text());
 };
-

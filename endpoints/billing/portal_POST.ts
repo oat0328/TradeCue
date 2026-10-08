@@ -1,3 +1,2 @@
 import {db}from "../../helpers/db";import {stripeClient}from "../../helpers/stripeClient";import {apiUser,apiJson,apiFailure,ApiError}from "../../helpers/apiAccess";
 export async function handle(request:Request){try{const u=await apiUser(request);const m=await db.selectFrom("userMemberships").select("stripeCustomerId").where("userId","=",u.id).executeTakeFirst();if(!m?.stripeCustomerId)throw new ApiError(409,"No paid subscription to manage yet.");const s=await stripeClient().billingPortal.sessions.create({customer:m.stripeCustomerId,return_url:"https://cuetrade.floot.app/membership"});return apiJson({url:s.url});}catch(e){return apiFailure(e);}}
-

@@ -9,4 +9,3 @@ export function useAdminOverview(enabled = true) {
     staleTime: 30_000,
   });
 }
-

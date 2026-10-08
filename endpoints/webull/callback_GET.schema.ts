@@ -6,4 +6,3 @@ export const schema = z.object({
 });
 
 export type OutputType = never;
-

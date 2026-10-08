@@ -7,6 +7,12 @@ describe("readApiResponse",()=>{
     expect(result).toEqual({ok:true});
   });
 
+  it("parses plain JSON responses without returning undefined",async()=>{
+    const response=new Response('{"buildId":"abc","generatedAt":"now"}',{status:200});
+    const result=await readApiResponse<{buildId:string;generatedAt:string}>(response,"failed");
+    expect(result).toEqual({buildId:"abc",generatedAt:"now"});
+  });
+
   it("replaces raw HTML/404 parser noise with a user-facing HTTP error",async()=>{
     const response=new Response("<html>Not found</html>",{status:404});
     let message="";
@@ -18,4 +24,3 @@ describe("readApiResponse",()=>{
     expect(message).toBe("Unable to load (HTTP 404)");
   });
 });
-

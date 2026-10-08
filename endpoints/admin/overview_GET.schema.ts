@@ -33,4 +33,3 @@ export const getAdminOverview = async (init?: RequestInit): Promise<OutputType> 
   }
   return superjson.parse<OutputType>(await response.text());
 };
-

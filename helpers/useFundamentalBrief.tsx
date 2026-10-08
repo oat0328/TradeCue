@@ -10,4 +10,3 @@ export function useFundamentalBrief(symbol: string, enabled = true) {
     retry: false,
   });
 }
-

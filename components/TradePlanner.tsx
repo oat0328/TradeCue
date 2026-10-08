@@ -78,4 +78,3 @@ export function TradePlanner({
     {exceedsConfigured&&<div className={styles.warning}><AlertTriangle size={16}/><span>This plan risks {dollars(result!.actualRisk)}, above your configured per-trade limit of {dollars(configuredMax)}. Reduce shares or risk percentage before using it.</span></div>}
   </section>;
 }
-

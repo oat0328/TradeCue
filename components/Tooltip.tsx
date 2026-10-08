@@ -1,31 +1,29 @@
-import React from "react";
+import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import styles from "./Tooltip.module.css";
 
-export const TooltipProvider=TooltipPrimitive.Provider;
-export const Tooltip=TooltipPrimitive.Root;
-export const TooltipTrigger=TooltipPrimitive.Trigger;
+/**
+ * This is already included in the global context providers so should not be rendered again.
+ */
+const TooltipProvider = TooltipPrimitive.Provider;
 
-export const TooltipContent=React.forwardRef<
+const Tooltip = TooltipPrimitive.Root;
+
+const TooltipTrigger = TooltipPrimitive.Trigger;
+
+const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({style,sideOffset=6,...props},ref)=>(
+>(({ className, sideOffset = 4, ...props }, ref) => (
   <TooltipPrimitive.Portal>
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      style={{
-        zIndex:1100,
-        padding:"6px 8px",
-        border:"1px solid var(--border)",
-        borderRadius:6,
-        background:"var(--popover, var(--card))",
-        color:"var(--foreground)",
-        fontSize:12,
-        boxShadow:"0 10px 30px rgba(0,0,0,.28)",
-        ...style,
-      }}
+      className={`${styles.content} ${className || ""}`}
       {...props}
     />
   </TooltipPrimitive.Portal>
 ));
-TooltipContent.displayName="TooltipContent";
+TooltipContent.displayName = TooltipPrimitive.Content.displayName;
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };

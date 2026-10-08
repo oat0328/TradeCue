@@ -4,4 +4,3 @@ export function stripeClient() {
  if(!key)throw new Error("Stripe billing is not connected.");
  return new Stripe(key,{maxNetworkRetries:2,timeout:15000});
 }
-
