@@ -45,9 +45,21 @@ export async function handle(request:Request){
       }
     }
 
+    if(input.action==="toggle_alert"){
+      const item=await db.selectFrom("watchlistItems").select(["id","symbol"]).where("id","=",input.id).where("userId","=",user.id).executeTakeFirst();
+      if(!item)throw new ApiError(404,"Watchlist item not found.");
+      await db.updateTable("watchlistItems").set({alertEnabled:input.enabled}).where("id","=",input.id).where("userId","=",user.id).execute();
+      await db.insertInto("cueAuditLog").values({
+        userId:user.id,
+        action:input.enabled?"watchlist_alert_enabled":"watchlist_alert_disabled",
+        entityType:"symbol",
+        entityId:item.symbol,
+        details:{},
+      }).execute();
+    }
+
     return apiJson({ok:true});
   }catch(error){
     return apiFailure(error);
   }
 }
-

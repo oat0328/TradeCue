@@ -1,0 +1,22 @@
+{
+  "cueWeekend": {
+    "enabled": true,
+    "schedule": "0 17 * * 0",
+    "timezone": "America/Los_Angeles"
+  },
+  "cuePremarket": {
+    "enabled": true,
+    "schedule": "0 6 * * 1-5",
+    "timezone": "America/Los_Angeles"
+  },
+  "cuePostmarket": {
+    "enabled": true,
+    "schedule": "0 13 * * 1-5",
+    "timezone": "America/Los_Angeles"
+  },
+  "cueOpenCleanup": {
+    "enabled": true,
+    "schedule": "31 6 * * 1-5",
+    "timezone": "America/Los_Angeles"
+  }
+}

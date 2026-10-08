@@ -10,4 +10,3 @@ export async function configureBilling() {
  await db.insertInto("appSettings").values({key:"stripe_webhook",value:{id:hook.id,secret:signingSecret,live:balance.livemode}}).onConflict(o=>o.column("key").doUpdateSet({value:{id:hook.id,secret:signingSecret,live:balance.livemode},updatedAt:new Date()})).execute();
  return {ready:true,live:balance.livemode};
 }
-

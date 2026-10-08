@@ -41,4 +41,3 @@ export const AuthErrorPage: React.FC<AuthErrorPageProps> = ({
     </div>
   );
 };
-

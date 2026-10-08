@@ -14,4 +14,3 @@ export async function handle(request:Request){try{const u=await apiUser(request)
  return {kind:c.kind,tier:c.tier,expiresAt};
  });return apiJson(result);
 }catch(e){return apiFailure(e);}}
-

@@ -31,4 +31,3 @@ export const ScrollToHashElement = () => {
 
   return null;
 };
-

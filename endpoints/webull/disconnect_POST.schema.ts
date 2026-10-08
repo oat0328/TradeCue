@@ -23,4 +23,3 @@ export async function postWebullDisconnect(init?: RequestInit): Promise<OutputTy
 
   return superjson.parse<OutputType>(await response.text());
 }
-

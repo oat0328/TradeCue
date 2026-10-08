@@ -95,4 +95,3 @@ export const ThemeModeSwitch = ({ className }: ThemeModeSwitchProps) => {
     </div>
   );
 };
-

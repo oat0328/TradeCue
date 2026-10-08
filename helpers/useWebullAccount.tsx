@@ -1,3 +1,4 @@
+import {brokerPollInterval} from "./brokerPollInterval";
 import {useQuery,useMutation,useQueryClient}from "@tanstack/react-query";
 import {getWebullAccount}from "../endpoints/webull/account_GET.schema";
 import {getWebullBars}from "../endpoints/webull/bars_GET.schema";
@@ -12,17 +13,17 @@ export function useWebullAccount(enabled:boolean,symbol:string,timeframe:string,
    enabled,
    retry:false,
    staleTime:30_000,
-   refetchInterval:60_000,
-   refetchIntervalInBackground:false,
+   refetchInterval:query=>brokerPollInterval(query.state.error,60_000),
+   refetchIntervalInBackground:true,
  });
  const bars=useQuery({
    queryKey:["webull","bars",symbol,timeframe],
    queryFn:()=>getWebullBars(symbol,timeframe),
    enabled:enabled&&!!account.data,
    retry:false,
-   staleTime:10_000,
-   refetchInterval:15_000,
-   refetchIntervalInBackground:false,
+   staleTime:20_000,
+   refetchInterval:query=>brokerPollInterval(query.state.error,30_000),
+   refetchIntervalInBackground:true,
  });
  const connect=useMutation({
    mutationFn:postWebullKeys,
@@ -40,4 +41,3 @@ export function useWebullAccount(enabled:boolean,symbol:string,timeframe:string,
  });
  return {account,bars,connect,disconnect};
 }
-

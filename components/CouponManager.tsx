@@ -305,4 +305,3 @@ export function CouponManager({ className = "" }: { className?: string }) {
     </section>
   );
 }
-

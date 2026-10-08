@@ -11,4 +11,3 @@ export function useOwnerWebullBars(symbol: string, timeframe: string, enabled = 
     refetchInterval: 20_000,
   });
 }
-

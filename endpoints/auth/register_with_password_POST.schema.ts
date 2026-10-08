@@ -37,4 +37,3 @@ export const postRegister = async (
 
   return superjson.parse<OutputType>(await result.text());
 };
-

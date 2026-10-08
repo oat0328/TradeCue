@@ -14,4 +14,3 @@ export interface User {
   // adjust this as necessary
   role: "admin" | "user";
 }
-

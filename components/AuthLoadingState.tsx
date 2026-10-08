@@ -72,4 +72,3 @@ export const AuthLoadingState: React.FC<AuthLoadingStateProps> = ({
     </div>
   );
 };
-

@@ -54,4 +54,3 @@ export const getEntitlements = async (init?: RequestInit): Promise<OutputType> =
   }
   return superjson.parse<OutputType>(await result.text());
 };
-

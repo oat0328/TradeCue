@@ -48,4 +48,3 @@ export const getOwnerWebullBars = async (
 
   return superjson.parse<OutputType>(await response.text());
 };
-

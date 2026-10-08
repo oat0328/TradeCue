@@ -14,4 +14,3 @@ export default function MembershipPage(){
  <div className={styles.plans}>{([["scout",39],["copilot",129],["autopilot",249]]as const).map(([tier,price])=><section className={styles.panel} key={tier}><h2>{tier}</h2><strong>${price}/month</strong><p>Renews monthly until canceled. Review all charges in secure checkout.</p><Button disabled={busy} onClick={()=>checkout(tier)}>Choose {tier}</Button></section>)}</div>
  {message&&<p role="alert">{message}</p>}<Button variant="outline" disabled={busy} onClick={async()=>{setBusy(true);try{const r=await postBillingPortal();window.location.assign(r.url);}catch(err){setMessage(err instanceof Error?err.message:"Billing unavailable");}finally{setBusy(false);}}}>Manage or cancel subscription</Button></main>;
 }
-

@@ -42,4 +42,3 @@ const MakeProtectedRoute: (roles: User["role"][]) => React.FC<{
 // Create protected routes here, then import them in pageLayout
 export const AdminRoute = MakeProtectedRoute(["admin"]);
 export const UserRoute = MakeProtectedRoute(["user", "admin"]);
-

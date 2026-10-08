@@ -12,4 +12,3 @@ export async function postCancelPaperOrder(body:z.infer<typeof schema>):Promise<
   const r=await fetch("/_api/webull/order-cancel",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:superjson.stringify(schema.parse(body))});
   return readApiResponse<OutputType>(r,"Unable to cancel order");
 }
-

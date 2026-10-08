@@ -10,4 +10,3 @@ export function useOwnerWebullPaper(enabled = true, accountId?: string) {
     retry: false,
   });
 }
-

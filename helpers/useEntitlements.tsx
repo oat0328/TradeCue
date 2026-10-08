@@ -9,4 +9,3 @@ export function useEntitlements(enabled = true) {
     staleTime: 60_000,
   });
 }
-

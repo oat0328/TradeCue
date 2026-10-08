@@ -20,4 +20,3 @@ export async function getWebullBars(symbol:string,timeframe:string):Promise<Outp
   const r=await fetch("/_api/webull/bars?"+new URLSearchParams({symbol,timeframe}),{credentials:"include"});
   return readApiResponse<OutputType>(r,"Unable to load Webull chart data");
 }
-

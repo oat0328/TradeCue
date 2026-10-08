@@ -1,4 +1,3 @@
-import { UserRoute } from "../components/ProtectedRoute";
-
-export default [UserRoute];
-
+import {UserRoute} from "../components/ProtectedRoute";
+import {FlootRealtimeProvider} from "../components/FlootRealtimeProvider";
+export default [UserRoute,FlootRealtimeProvider];

@@ -16,6 +16,8 @@ export function PaperOrderPanel({
   positionQuantity = 0,
   longOnly = true,
   suggestedSide = null,
+  showTicket = true,
+  showOrders = true,
 }: {
   enabled:boolean;
   accountId?:string;
@@ -24,6 +26,8 @@ export function PaperOrderPanel({
   positionQuantity?:number;
   longOnly?:boolean;
   suggestedSide?:"BUY"|"SELL"|null;
+  showTicket?:boolean;
+  showOrders?:boolean;
 }) {
   const paper=usePaperOrders(enabled,accountId);
   const [side,setSide]=useState<"BUY"|"SELL">("BUY");
@@ -32,6 +36,8 @@ export function PaperOrderPanel({
   const [limitPrice,setLimitPrice]=useState(latestPrice ? latestPrice.toFixed(2) : "");
   const [confirmed,setConfirmed]=useState(false);
   const [message,setMessage]=useState("");
+  const [manualRefresh,setManualRefresh]=useState(false);
+  const refreshOrders=async()=>{if(manualRefresh)return;setManualRefresh(true);try{await paper.orders.refetch();}finally{setManualRefresh(false);}};
 
   const quantityNumber=Number(quantity);
   const limitNumber=Number(limitPrice);
@@ -49,7 +55,8 @@ export function PaperOrderPanel({
   const valid=Boolean(
     enabled &&
     accountId &&
-    Number.isInteger(quantityNumber) &&
+    Number.isFinite(quantityNumber) &&
+    (side==="BUY" ? Number.isInteger(quantityNumber) : Math.round(quantityNumber*1e6)/1e6===quantityNumber) &&
     quantityNumber>0 &&
     quantityNumber<=100000 &&
     (side==="BUY" || (canSell && quantityNumber<=positionQuantity)) &&
@@ -66,6 +73,8 @@ export function PaperOrderPanel({
   const submit=async()=>{
     if(!accountId||!valid)return;
     setMessage("");
+    const limit=orderType==="LIMIT"?limitNumber:undefined;
+    const intentId=paper.intentFor([accountId,symbol,side,orderType,quantityNumber,limit??""].join("|"));
     try{
       const result=await paper.place.mutateAsync({
         accountId,
@@ -73,22 +82,25 @@ export function PaperOrderPanel({
         side,
         orderType,
         quantity:quantityNumber,
-        limitPrice:orderType==="LIMIT"?limitNumber:undefined,
+        limitPrice:limit,
         confirmPaper:true,
+        intentId,
       });
-      setMessage("Paper order submitted to Webull: "+result.clientOrderId);
+      paper.settleAttempt();
+      setMessage((result.duplicate?"Already submitted — no duplicate placed: ":"Paper order submitted to Webull: ")+result.clientOrderId);
       setConfirmed(false);
     }catch(error){
+      paper.settleAttempt(error);
       setMessage(error instanceof Error?error.message:"Paper order failed.");
     }
   };
 
   if(!enabled||!accountId){
-    return <section className={styles.panel} id="paper-trading"><div className={styles.head}><div><small>WEBULL PAPERTRADING</small><h2>Paper orders unavailable</h2><p>Connect a Webull PaperTrade account first. TradeCUE will not submit a real-money order from this panel.</p></div><Badge variant="warning">CONNECTION REQUIRED</Badge></div></section>;
+    return <section className={styles.panel} id={showTicket?"paper-trading":"paper-orders"}><div className={styles.head}><div><small>WEBULL PAPERTRADING</small><h2>Paper orders unavailable</h2><p>Connect a Webull PaperTrade account first. TradeCUE will not submit a real-money order from this panel.</p></div><Badge variant="warning">CONNECTION REQUIRED</Badge></div></section>;
   }
 
-  return <section className={styles.panel} id="paper-trading">
-    <div className={styles.head}>
+  return <section className={styles.panel} id={showTicket?"paper-trading":"paper-orders"}>
+    {showTicket&&<><div className={styles.head}>
       <div><small>WEBULL PAPERTRADING</small><h2>Paper order ticket</h2><p>Sandbox account only.</p></div>
       <Badge variant="success">PAPER ONLY</Badge>
     </div>
@@ -99,22 +111,24 @@ export function PaperOrderPanel({
       <div><label>Symbol</label><strong>{symbol}</strong></div>
       <div><label>Side</label><Select value={side} onValueChange={(value)=>setSide(value as "BUY"|"SELL")}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="BUY">BUY / OPEN LONG</SelectItem>{canSell&&<SelectItem value="SELL">SELL / EXIT LONG</SelectItem>}</SelectContent></Select></div>
       <div><label>Order type</label><Select value={orderType} onValueChange={(value)=>setOrderType(value as "MARKET"|"LIMIT")}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="MARKET">Market</SelectItem><SelectItem value="LIMIT">Limit</SelectItem></SelectContent></Select></div>
-      <div><label>Quantity</label><Input inputMode="numeric" value={quantity} onChange={(event)=>setQuantity(event.target.value.replace(/[^0-9]/g,""))}/></div>
+      <div><label>Quantity</label><Input aria-label="Paper quantity" inputMode="decimal" value={quantity} onChange={(event)=>setQuantity(event.target.value.replace(/[^0-9.]/g,""))}/></div>
       {orderType==="LIMIT"&&<div><label>Limit price</label><Input inputMode="decimal" value={limitPrice} onChange={(event)=>setLimitPrice(event.target.value)}/></div>}
       <div><label>Reference price</label><strong>{latestPrice&&Number.isFinite(latestPrice)?"$"+latestPrice.toFixed(2):"—"}</strong></div>
       <div><label>Approx. notional</label><strong>{estimated!=null&&Number.isFinite(estimated)?"$"+estimated.toLocaleString(undefined,{maximumFractionDigits:2}):"—"}</strong></div>
     </div>
 
+    {side==="SELL"&&<p>Held: {positionQuantity} shares. The server checks outstanding exits before submission. Fractional exits are subject to Webull preview approval.</p>}
     <label className={styles.confirm}><Checkbox checked={confirmed} onChange={(event)=>setConfirmed(event.target.checked)}/><span>I confirm this is a Webull PaperTrade order. {longOnly?"SELL is exit-only; TradeCUE will not open a short position.":""}</span></label>
 
     <div className={styles.actions}>
       <Button disabled={!valid||paper.place.isPending} onClick={submit}>{paper.place.isPending?"Submitting…":"Submit paper order"}</Button>
-      <Button variant="outline" disabled={paper.orders.isFetching} onClick={()=>paper.orders.refetch()}><RefreshCw size={14}/>{paper.orders.isFetching?"Refreshing…":"Refresh orders"}</Button>
+      <Button variant="outline" disabled={manualRefresh} onClick={refreshOrders}><RefreshCw size={14}/>{manualRefresh?"Refreshing…":"Refresh orders"}</Button>
     </div>
+    </>}
     {message&&<p role="status" className={styles.message}>{message}</p>}
     {paper.orders.error&&<p role="alert" className={styles.error}>{paper.orders.error.message}</p>}
 
-    <div className={styles.orders}>
+    {showOrders&&<div className={styles.orders}>
       <h3>Recent Webull paper orders</h3>
       {paper.orders.data?.orders.length ? <div className={styles.tableWrap}><table><thead><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Qty</th><th>Status</th><th>Action</th></tr></thead><tbody>
         {paper.orders.data.orders.map((order)=>(
@@ -125,6 +139,7 @@ export function PaperOrderPanel({
         ))}
       </tbody></table></div>:<p>No recent paper orders returned by Webull.</p>}
       {paper.cancel.error&&<p role="alert" className={styles.error}>{paper.cancel.error.message}</p>}
-    </div>
+    </div>}
   </section>;
 }
+

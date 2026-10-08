@@ -40,20 +40,20 @@ describe("themeMode helper", () => {
 
   it("should add the 'dark' class when switching to dark mode", () => {
     switchToDarkMode();
-    expect(document.body.classList.contains("dark")).toBe(true);
+    expect(document.body.classList.contains("dark")).toBeTrue();
   });
 
   it("should remove the 'dark' class when switching to light mode", () => {
     document.body.classList.add("dark");
     switchToLightMode();
-    expect(document.body.classList.contains("dark")).toBe(false);
+    expect(document.body.classList.contains("dark")).toBeFalse();
   });
 
   it("should apply dark mode automatically when user prefers dark", () => {
     window.matchMedia = (query: string): MediaQueryList =>
       createMediaQueryList(true, query);
     switchToAutoMode();
-    expect(document.body.classList.contains("dark")).toBe(true);
+    expect(document.body.classList.contains("dark")).toBeTrue();
   });
 
   it("should apply light mode automatically when user does not prefer dark", () => {
@@ -61,7 +61,7 @@ describe("themeMode helper", () => {
     window.matchMedia = (query: string): MediaQueryList =>
       createMediaQueryList(false, query);
     switchToAutoMode();
-    expect(document.body.classList.contains("dark")).toBe(false);
+    expect(document.body.classList.contains("dark")).toBeFalse();
   });
 
   it("should update theme when system preference changes in auto mode upon re-calling switchToAutoMode", () => {
@@ -69,19 +69,19 @@ describe("themeMode helper", () => {
     window.matchMedia = (query: string): MediaQueryList =>
       createMediaQueryList(false, query);
     switchToAutoMode();
-    expect(document.body.classList.contains("dark")).toBe(false);
+    expect(document.body.classList.contains("dark")).toBeFalse();
 
     // Simulate dark preference by returning a new media query object.
     window.matchMedia = (query: string): MediaQueryList =>
       createMediaQueryList(true, query);
     switchToAutoMode();
-    expect(document.body.classList.contains("dark")).toBe(true);
+    expect(document.body.classList.contains("dark")).toBeTrue();
 
     // Change back to light preference.
     window.matchMedia = (query: string): MediaQueryList =>
       createMediaQueryList(false, query);
     switchToAutoMode();
-    expect(document.body.classList.contains("dark")).toBe(false);
+    expect(document.body.classList.contains("dark")).toBeFalse();
   });
 
   it("should update theme when media query change event is triggered", () => {
@@ -91,21 +91,21 @@ describe("themeMode helper", () => {
 
     switchToAutoMode();
     // Initially, dummyMediaQuery.matches is false so light mode.
-    expect(document.body.classList.contains("dark")).toBe(false);
+    expect(document.body.classList.contains("dark")).toBeFalse();
 
     // Simulate change to dark preference.
     dummyMediaQuery.setMatches(true);
     if (dummyMediaQuery.onchange) {
       dummyMediaQuery.onchange({ matches: true } as MediaQueryListEvent);
     }
-    expect(document.body.classList.contains("dark")).toBe(true);
+    expect(document.body.classList.contains("dark")).toBeTrue();
 
     // Simulate change back to light preference.
     dummyMediaQuery.setMatches(false);
     if (dummyMediaQuery.onchange) {
       dummyMediaQuery.onchange({ matches: false } as MediaQueryListEvent);
     }
-    expect(document.body.classList.contains("dark")).toBe(false);
+    expect(document.body.classList.contains("dark")).toBeFalse();
   });
 
   it("getCurrentThemeMode should return 'dark' when dark mode is set manually", () => {

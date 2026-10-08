@@ -55,4 +55,3 @@ const featureMap: Record<MembershipTier, string[]> = {
 export function membershipAccess(tier: MembershipTier) {
   return featureMap[tier];
 }
-

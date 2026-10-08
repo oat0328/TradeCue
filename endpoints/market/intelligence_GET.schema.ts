@@ -19,4 +19,3 @@ export async function getMarketIntelligence(symbol:string):Promise<OutputType>{
   const r=await fetch("/_api/market/intelligence?"+new URLSearchParams({symbol}),{credentials:"include"});
   return readApiResponse<OutputType>(r,"Unable to load TradeCUE intelligence");
 }
-
