@@ -16,6 +16,7 @@ export async function handle(request:Request){
     const rows=await db
       .selectFrom("watchlistItems")
       .select(["id","symbol","assetType","sortOrder"])
+      .select(["alertEnabled"])
       .where("userId","=",user.id)
       .orderBy("sortOrder","asc")
       .orderBy("createdAt","asc")
@@ -55,6 +56,7 @@ export async function handle(request:Request){
         symbol:row.symbol,
         assetType:row.assetType,
         sortOrder:row.sortOrder,
+        alertEnabled:Boolean(row.alertEnabled),
         price:quotes.get(row.symbol)?.price??null,
         change:quotes.get(row.symbol)?.change??null,
         changePercent:quotes.get(row.symbol)?.changePercent??null,
@@ -66,4 +68,3 @@ export async function handle(request:Request){
     return apiFailure(error);
   }
 }
-

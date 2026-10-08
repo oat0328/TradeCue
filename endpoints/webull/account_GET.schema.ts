@@ -6,4 +6,3 @@ export async function getWebullAccount(accountId?:string):Promise<OutputType> {
  const r=await fetch("/_api/webull/account"+(accountId?"?accountId="+encodeURIComponent(accountId):""),{credentials:"include"});
  return readApiResponse<OutputType>(r,"Unable to load Webull account");
 }
-

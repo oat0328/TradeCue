@@ -13,6 +13,7 @@ import {
   macdSeries,
   type Candle,
 } from "../helpers/chartMath";
+import { calculateMarketStructure } from "../helpers/marketStructure";
 import styles from "./CueVisionChart.module.css";
 
 export type { Candle } from "../helpers/chartMath";
@@ -81,16 +82,18 @@ export default function CueVisionChart({
   coachContext?: CueCoachContext | null;
   teachingMode?: boolean;
 }) {
-  const [style, setStyle] = useState<"candles" | "heikin" | "ohlc">("heikin");
-  const [count, setCount] = useState(90);
+  const [style, setStyle] = useState<"candles" | "heikin" | "ohlc">("candles");
+  const [count, setCount] = useState(42);
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [lesson, setLesson] = useState<keyof typeof lessons>("candles");
-  const [showZones, setShowZones] = useState(true);
+  const [showZones, setShowZones] = useState(false);
   const [showLevels, setShowLevels] = useState(true);
-  const [expanded, setExpanded] = useState(false);
+  const [advancedOverlays,setAdvancedOverlays]=useState(false);
+  const [replayMode,setReplayMode]=useState(false);
+  const [replayCutoff,setReplayCutoff]=useState<number|null>(null);
   const [indicators, setIndicators] = useState(
-    () => new Set(["VWAP", "VOLUME", "EMA9", "EMA20", "BOLL", "RSI"]),
+    () => new Set(["VWAP", "VOLUME", "EMA9", "EMA20"]),
   );
   const [zones, setZones] = useState(() => new Set(chartZones.map((zone) => zone.key)));
   const drag = useRef<{ x: number; offset: number } | null>(null);
@@ -98,17 +101,11 @@ export default function CueVisionChart({
   useEffect(() => {
     setOffset(0);
     setSelected(null);
+    setReplayMode(false);
+    setReplayCutoff(null);
   }, [symbol, timeframe]);
 
-  useEffect(() => {
-    if (!expanded) return;
-    const onKey=(event:KeyboardEvent)=>{ if(event.key==="Escape") setExpanded(false); };
-    document.body.style.overflow="hidden";
-    window.addEventListener("keydown",onKey);
-    return ()=>{ document.body.style.overflow=""; window.removeEventListener("keydown",onKey); };
-  }, [expanded]);
-
-  const all = useMemo(
+  const sourceAll = useMemo(
     () =>
       dataSource === "webull-paper"
         ? (bars || []).filter((candle) =>
@@ -117,8 +114,13 @@ export default function CueVisionChart({
         : [],
     [bars, dataSource],
   );
+  const all=useMemo(()=>{
+    if(!replayMode||replayCutoff==null)return sourceAll;
+    return sourceAll.slice(0,Math.max(8,Math.min(sourceAll.length,replayCutoff)));
+  },[sourceAll,replayMode,replayCutoff]);
 
   const size = Math.min(count, all.length);
+  const maxVisible = Math.min(1200,Math.max(12,all.length));
   const maxOffset = Math.max(0, all.length - size);
   const safeOffset = Math.min(offset, maxOffset);
   const start = Math.max(0, all.length - safeOffset - size);
@@ -171,11 +173,13 @@ export default function CueVisionChart({
   const haCandle = visibleHeikin[index];
   const vwap = visibleVwap(raw);
   const intraday = !["1D", "1W"].includes(timeframe);
+  const structure = useMemo(()=>calculateMarketStructure(all),[all]);
 
   const etDayKey = (value:string) => new Intl.DateTimeFormat("en-CA", {
     timeZone:"America/New_York", year:"numeric", month:"2-digit", day:"2-digit",
   }).format(new Date(value));
   const latestBar = all[all.length-1];
+  const visibleLastPrice = raw.at(-1)?.close ?? null;
   const latestDay = latestBar?.time ? etDayKey(latestBar.time) : null;
   const sameDay = latestDay ? all.filter(bar=>bar.time ? etDayKey(bar.time)===latestDay : false) : [];
   const rangeFor = (from:number,to:number) => {
@@ -191,24 +195,15 @@ export default function CueVisionChart({
   const premarketRange = intraday ? rangeFor(4*60,9*60+30) : null;
   const openingRange = intraday ? rangeFor(9*60+30,10*60) : null;
 
-  const width = 1400;
-  const height = 780;
-  const left = 22;
-  const right = 126;
-  const top = 32;
-  const bottom = 82;
-  const plotHeight = 600;
+  const width = 1600;
+  const height = 940;
+  const left = 30;
+  const right = 205;
+  const top = 42;
+  const bottom = 100;
+  const plotHeight = 735;
   const plotWidth = width - left - right;
 
-  const referenceValues = [
-    coachContext?.support20, coachContext?.resistance20,
-    premarketRange?.high, premarketRange?.low,
-    openingRange?.high, openingRange?.low,
-  ].filter((value):value is number=>value!=null&&Number.isFinite(value));
-  const levelValues =
-    showLevels && levels
-      ? [levels.entryLow, levels.entryHigh, levels.stop, levels.target1, levels.target2, levels.target3, ...referenceValues]
-      : referenceValues;
   const indicatorPriceValues = [
     indicators.has("EMA9") ? visibleSeries.ema9 : [],
     indicators.has("EMA20") ? visibleSeries.ema20 : [],
@@ -221,19 +216,23 @@ export default function CueVisionChart({
   ].flat().filter((value): value is number => value != null && Number.isFinite(value));
   const visiblePriceHigh=raw.length?Math.max(...raw.map(candle=>candle.high)):null;
   const visiblePriceLow=raw.length?Math.min(...raw.map(candle=>candle.low)):null;
-  const lows = rendered.map((candle) => candle.low).concat(levelValues, indicatorPriceValues);
-  const highs = rendered.map((candle) => candle.high).concat(levelValues, indicatorPriceValues);
-  const rawLow = lows.length ? Math.min(...lows) : 0;
-  const rawHigh = highs.length ? Math.max(...highs) : 1;
+  const candleLow = rendered.length ? Math.min(...rendered.map((candle) => candle.low)) : 0;
+  const candleHigh = rendered.length ? Math.max(...rendered.map((candle) => candle.high)) : 1;
+  const candleRange = Math.max(candleHigh - candleLow, Math.max(Math.abs(candleHigh) * 0.0025, 0.01));
+  const nearbyFloor = candleLow - candleRange * 0.35;
+  const nearbyCeiling = candleHigh + candleRange * 0.35;
+  const nearbyIndicators = indicatorPriceValues.filter((value)=>value>=nearbyFloor&&value<=nearbyCeiling);
+  const rawLow = Math.min(candleLow,...nearbyIndicators);
+  const rawHigh = Math.max(candleHigh,...nearbyIndicators);
   const range = Math.max(rawHigh - rawLow, 0.01);
-  const min = rawLow - range * 0.08;
-  const max = rawHigh + range * 0.08;
+  const min = rawLow - range * 0.12;
+  const max = rawHigh + range * 0.12;
 
   const y = (value: number) =>
     top + ((max - value) / Math.max(max - min, 0.000001)) * plotHeight;
   const step = plotWidth / Math.max(1, raw.length);
   const x = (i: number) => left + (i + 0.5) * step;
-  const bodyWidth = Math.max(2, Math.min(16, step * 0.68));
+  const bodyWidth = Math.max(4, Math.min(24, step * 0.72));
   const maxVolume = Math.max(1, ...raw.map((item) => item.volume || 0));
   const haRange = haCandle ? Math.max(haCandle.high-haCandle.low,0.000001) : 0;
   const haBody = haCandle ? Math.abs(haCandle.close-haCandle.open) : 0;
@@ -293,7 +292,7 @@ export default function CueVisionChart({
 
   const zoom = (factor: number) => {
     setCount((value) =>
-      Math.max(12, Math.min(Math.max(12, all.length), Math.round(value * factor))),
+      Math.max(12, Math.min(maxVisible, Math.round(value * factor))),
     );
     setSelected(null);
   };
@@ -348,7 +347,9 @@ export default function CueVisionChart({
     label: string,
     className: string,
     key: string,
-  ) => (
+  ) => {
+    if(value<min||value>max)return null;
+    return (
     <g key={key}>
       <line
         x1={left}
@@ -366,10 +367,10 @@ export default function CueVisionChart({
         {label} {format(value)}
       </text>
     </g>
-  );
+  );};
 
   return (
-    <div className={expanded ? styles.wrap+" "+styles.expanded : styles.wrap} id="chart-coach">
+    <div className={styles.wrap} id="chart-coach">
       <div className={styles.toolbar}>
         <div className={styles.group}>
           {(["candles", "heikin", "ohlc"] as const).map((chartStyle) => (
@@ -392,9 +393,26 @@ export default function CueVisionChart({
           ))}
         </div>
         <span className={styles.source}>
-          {dataSource === "webull-paper" ? "WEBULL SANDBOX DATA" : "DATA UNAVAILABLE"}
+          {dataSource === "webull-paper" ? "WEBULL • "+sourceAll.length.toLocaleString()+" BARS" : "DATA UNAVAILABLE"}
         </span>
       </div>
+
+      {teachingMode&&<div className={styles.replayBar}>
+        <div>
+          <strong>{replayMode?"CUE REPLAY ACTIVE":"CUE REPLAY"}</strong>
+          <span>{replayMode?"Future candles are hidden. Structure and indicators use only revealed bars.":"Practice chart reading without seeing what happens next."}</span>
+        </div>
+        {!replayMode?<Button size="sm" variant="outline" disabled={sourceAll.length<20} onClick={()=>{
+          setReplayMode(true);
+          setReplayCutoff(Math.max(12,Math.floor(sourceAll.length*.6)));
+          setOffset(0);setSelected(null);
+        }}>Start replay</Button>:<div className={styles.group}>
+          <Button size="sm" variant="ghost" disabled={(replayCutoff??0)<=12} onClick={()=>setReplayCutoff(value=>Math.max(12,(value??12)-1))}>← 1</Button>
+          <Button size="sm" variant="secondary" disabled={(replayCutoff??0)>=sourceAll.length} onClick={()=>setReplayCutoff(value=>Math.min(sourceAll.length,(value??12)+1))}>Reveal candle →</Button>
+          <Button size="sm" variant="ghost" disabled={(replayCutoff??0)>=sourceAll.length} onClick={()=>setReplayCutoff(value=>Math.min(sourceAll.length,(value??12)+5))}>+5</Button>
+          <Button size="sm" variant="outline" onClick={()=>{setReplayMode(false);setReplayCutoff(null);setOffset(0);setSelected(null);}}>Exit replay</Button>
+        </div>}
+      </div>}
 
       <div className={styles.toolbar}>
         <div className={styles.group}>
@@ -410,7 +428,7 @@ export default function CueVisionChart({
             size="sm"
             variant="outline"
             onClick={() => zoom(1.4)}
-            disabled={all.length === 0 || count >= all.length}
+            disabled={all.length === 0 || count >= maxVisible}
           >
             Zoom −
           </Button>
@@ -418,12 +436,12 @@ export default function CueVisionChart({
             size="sm"
             variant="ghost"
             onClick={() => {
-              setCount(Math.max(12, all.length));
+              setCount(maxVisible);
               setOffset(0);
             }}
             disabled={all.length === 0}
           >
-            Fit all
+            Fit viewport
           </Button>
         </div>
         <div className={styles.group}>
@@ -470,13 +488,21 @@ export default function CueVisionChart({
       <div className={styles.zones}>
         <Button
           size="sm"
+          variant={advancedOverlays ? "secondary" : "outline"}
+          onClick={() => setAdvancedOverlays(!advancedOverlays)}
+          disabled={all.length === 0}
+        >
+          {teachingMode ? "Advanced overlays" : "Indicators"} {advancedOverlays ? "on" : "off"}
+        </Button>
+        {teachingMode&&<Button
+          size="sm"
           variant={showZones ? "secondary" : "ghost"}
           onClick={() => setShowZones(!showZones)}
           disabled={all.length === 0}
         >
           Session zones {showZones ? "on" : "off"}
-        </Button>
-        {showZones &&
+        </Button>}
+        {advancedOverlays && showZones &&
           chartZones.map((zone) => (
             <Button
               key={zone.key}
@@ -506,12 +532,12 @@ export default function CueVisionChart({
         </Button>
       </div>
 
-      <div className={styles.indicators}>
-        <span>Indicators</span>
+      {(teachingMode||advancedOverlays)&&<div className={styles.indicators}>
+        {teachingMode&&<span>Indicators</span>}
         {[
           "VWAP","VOLUME","EMA9","EMA20","EMA50","EMA200",
           "SMA50","SMA200","BOLL","RSI","MACD","ATR",
-        ].map((name) => (
+        ].filter((name)=>advancedOverlays||["VWAP","VOLUME","EMA9","EMA20"].includes(name)).map((name) => (
           <Button
             key={name}
             size="sm"
@@ -522,7 +548,19 @@ export default function CueVisionChart({
             {name === "BOLL" ? "Bollinger" : name}
           </Button>
         ))}
-      </div>
+      </div>}
+
+      {teachingMode&&all.length>0&&<div className={styles.smartStrip}>
+        <span><b>STRUCTURE</b><strong>{structure.trend}</strong><small>{structure.pattern}</small></span>
+        <span><b>SMART SUPPORT</b><strong>{structure.support?format(structure.support.price):"—"}</strong><small>{structure.support?structure.support.strength+"/100 · "+structure.support.touches+" touches":"Not confirmed"}</small></span>
+        <span><b>SMART RESISTANCE</b><strong>{structure.resistance?format(structure.resistance.price):"—"}</strong><small>{structure.resistance?structure.resistance.strength+"/100 · "+structure.resistance.touches+" touches":"Not confirmed"}</small></span>
+        <span><b>LATEST STRUCTURE</b><strong>{structure.latestEvent?structure.latestEvent.kind.replaceAll("_"," "):"WAIT"}</strong><small>{structure.latestEvent?"Rule-detected from confirmed candles":"No structural trigger"}</small></span>
+      </div>}
+      {replayMode&&<div className={styles.replayStatus}>
+        <span><b>REVEALED</b>{all.length}/{sourceAll.length} candles</span>
+        <span><b>CUE READ</b>{structure.summary}</span>
+        <span><b>RULE</b>Make your decision before revealing the next candle.</span>
+      </div>}
 
       {teachingMode && haCandle && (
         <div className={styles.liveLesson}>
@@ -550,7 +588,6 @@ export default function CueVisionChart({
               " chart. Drag to pan; use controls or arrow keys to inspect."
             }
             tabIndex={0}
-            onDoubleClick={()=>setExpanded(value=>!value)}
             onPointerDown={(event) => {
               drag.current = { x: event.clientX, offset: safeOffset };
               event.currentTarget.setPointerCapture(event.pointerId);
@@ -579,6 +616,7 @@ export default function CueVisionChart({
             }}
           >
             <rect x={left} y={top} width={plotWidth} height={plotHeight} fill="transparent" />
+            {visibleLastPrice!=null&&levelLine(visibleLastPrice,"LAST",styles.currentPriceLine,"last-price")}
 
             {zoneRuns.map((zone) => (
               <g key={zone.key}>
@@ -602,21 +640,23 @@ export default function CueVisionChart({
               </g>
             ))}
 
-            {visiblePriceHigh!=null && levelLine(visiblePriceHigh,"VISIBLE HIGH",styles.extremeLine,"visible-high")}
-            {visiblePriceLow!=null && levelLine(visiblePriceLow,"VISIBLE LOW",styles.extremeLine,"visible-low")}
-            {coachContext && (
+            {advancedOverlays && visiblePriceHigh!=null && levelLine(visiblePriceHigh,"VISIBLE HIGH",styles.extremeLine,"visible-high")}
+            {advancedOverlays && visiblePriceLow!=null && levelLine(visiblePriceLow,"VISIBLE LOW",styles.extremeLine,"visible-low")}
+            {advancedOverlays && coachContext && (
               <>
                 {levelLine(coachContext.resistance20,"RESISTANCE",styles.resistanceLine,"resistance20")}
                 {levelLine(coachContext.support20,"SUPPORT",styles.supportLine,"support20")}
               </>
             )}
-            {showZones && premarketRange && (
+            {structure.resistance && levelLine(structure.resistance.price,`R ${structure.resistance.strength}`,styles.smartResistanceLine,"smart-resistance")}
+            {structure.support && levelLine(structure.support.price,`S ${structure.support.strength}`,styles.smartSupportLine,"smart-support")}
+            {advancedOverlays && showZones && premarketRange && (
               <>
                 {levelLine(premarketRange.high,"PRE HIGH",styles.sessionHighLine,"pre-high")}
                 {levelLine(premarketRange.low,"PRE LOW",styles.sessionLowLine,"pre-low")}
               </>
             )}
-            {showZones && openingRange && (
+            {advancedOverlays && showZones && openingRange && (
               <>
                 {levelLine(openingRange.high,"OR30 HIGH",styles.openingLine,"or-high")}
                 {levelLine(openingRange.low,"OR30 LOW",styles.openingLine,"or-low")}
@@ -785,6 +825,16 @@ export default function CueVisionChart({
               );
             })}
 
+            {structure.events.filter(event=>event.index>=start&&event.index<start+size).slice(advancedOverlays?-12:-5).map((event,eventIndex)=>{
+              const localIndex=event.index-start;
+              const bullish=event.kind==="BOS_UP"||event.kind==="SWEEP_LOW"||event.kind==="FVG_BULL";
+              const short=event.kind==="BOS_UP"?"BOS↑":event.kind==="BOS_DOWN"?"BOS↓":event.kind==="SWEEP_HIGH"?"SWEEP H":event.kind==="SWEEP_LOW"?"SWEEP L":event.kind==="FVG_BULL"?"FVG↑":"FVG↓";
+              return <g key={event.kind+"-"+event.index+"-"+eventIndex}>
+                <circle cx={x(localIndex)} cy={y(event.price)} r="6" className={bullish?styles.structureBull:styles.structureBear}/>
+                <text x={x(localIndex)} y={y(event.price)-8} textAnchor="middle" className={styles.structureText}>{short}</text>
+              </g>;
+            })}
+
             {candle && (
               <line
                 x1={x(index)}
@@ -829,116 +879,5 @@ export default function CueVisionChart({
             <text
               x={left + plotWidth}
               y={height - 15}
-              textAnchor="end"
-              className={styles.axis}
-            >
-              {formatTime(raw[raw.length - 1].time)}
-            </text>
-          </svg>
-
-          <div className={styles.inspect} aria-live="polite">
-            <strong>{formatTime(candle?.time)}</strong>
-            <span>Open {format(candle?.open)}</span>
-            <span>High {format(candle?.high)}</span>
-            <span>Low {format(candle?.low)}</span>
-            <span>Close {format(candle?.close)}</span>
-            <span>Volume {(candle?.volume || 0).toLocaleString()}</span>
-          </div>
-          <div className={styles.indicatorReadouts}>
-            {indicators.has("RSI") && <span>RSI(14) <strong>{format(latestIndicatorValue(visibleSeries.rsi14) ?? undefined)}</strong></span>}
-            {indicators.has("MACD") && <span>MACD <strong>{format(latestIndicatorValue(visibleSeries.macd) ?? undefined)}</strong> / Signal <strong>{format(latestIndicatorValue(visibleSeries.macdSignal) ?? undefined)}</strong></span>}
-            {indicators.has("ATR") && <span>ATR(14) <strong>{format(latestIndicatorValue(visibleSeries.atr14) ?? undefined)}</strong></span>}
-          </div>
-          <p className={styles.hint}>
-            {raw.length} of {all.length} candles · Drag to pan. Point at a candle
-            or use arrow keys to inspect. Latest loaded bar:{" "}
-            {formatTime(all[all.length - 1]?.time)}.{" "}
-            {style === "heikin" ? "Heikin-Ashi prices are synthetic." : ""}
-          </p>
-        </>
-      )}
-
-      <section className={styles.coach}>
-        <div className={styles.coachHead}>
-          <div>
-            <small>PROFESSOR CUE • {teachingMode ? "TEACHING MODE" : "PRO MODE"} • CURRENT WEBULL CHART</small>
-            <h3>{symbol} · {timeframe} · {signalLabel ?? "DATA CHECK"}</h3>
-          </div>
-          <span>{coachContext?.fresh ? "Fresh bars" : "Market/data not fresh"}</span>
-        </div>
-
-        <div className={styles.chartReadStrip}>
-          <span><b>Heikin read</b><strong>{haConviction}</strong></span>
-          <span><b>Body</b><strong>{haBodyRead}</strong></span>
-          <span><b>Wicks</b><strong>{haWickRead}</strong></span>
-          <span><b>Support</b><strong>{format(coachContext?.support20)}</strong></span>
-          <span><b>Resistance</b><strong>{format(coachContext?.resistance20)}</strong></span>
-          <span><b>Pre H/L</b><strong>{premarketRange ? format(premarketRange.high)+" / "+format(premarketRange.low) : "—"}</strong></span>
-        </div>
-
-        {coachContext ? (
-          <>
-            <div className={styles.coachChecks}>
-              {[
-                ["Trend", coachContext.componentScores.trend, coachContext.componentScores.trend >= 65],
-                ["Momentum", coachContext.componentScores.momentum, coachContext.componentScores.momentum >= 60],
-                ["Volume", coachContext.componentScores.volume, coachContext.componentScores.volume >= 50],
-                ["Setup", coachContext.componentScores.setup, coachContext.componentScores.setup >= 65],
-                ["Data", coachContext.fresh ? 100 : 0, coachContext.fresh],
-              ].map(([label,value,pass]) => (
-                <span key={String(label)} className={pass ? styles.coachPass : styles.coachFail}>
-                  <b>{String(label)}</b>
-                  <strong>{label === "Data" ? (pass ? "LIVE" : "STALE") : String(value)+"/100"}</strong>
-                </span>
-              ))}
-            </div>
-
-            <p className={styles.currentRead}>
-              <strong>What TradeCUE sees:</strong>{" "}
-              Price {format(candle?.close)} · EMA9 {format(coachContext.ema9)} · EMA20 {format(coachContext.ema20)} · RSI {coachContext.rsi14.toFixed(1)} · RVOL {coachContext.relativeVolume.toFixed(2)}× · ATR {coachContext.atrPercent.toFixed(2)}%.
-            </p>
-
-            <p className={styles.actionRead}>
-              <strong>{signalLabel === "BUY" ? "BUY CHECK:" : signalLabel === "SELL" ? "EXIT CHECK:" : signalLabel === "AVOID" ? "STAY AWAY:" : signalLabel === "HOLD" ? "HOLD CHECK:" : "WAIT CHECK:"}</strong>{" "}
-              {signalLabel === "BUY"
-                ? "Fresh data and the core technical checks are aligned. Use the plotted entry zone, stop and target—not the Heikin-Ashi synthetic price—as the paper-trade plan."
-                : signalLabel === "SELL"
-                  ? "The open position has weakened into TradeCUE's exit-review conditions. Compare current price with the plotted stop and support before acting."
-                  : signalLabel === "AVOID"
-                    ? "Stay away for now. Trend or setup conditions are weak enough that TradeCUE does not want a new long entry."
-                    : signalLabel === "HOLD"
-                      ? "The setup is still constructive. Watch support, the stop line and whether Heikin-Ashi momentum starts losing body size."
-                      : "No entry yet. The chart is missing confirmation, the data is stale, or one of the core checks is below threshold. Wait for the failed checks to improve instead of chasing."}
-            </p>
-          </>
-        ) : (
-          <p className={styles.currentRead}><strong>Data check:</strong> TradeCUE needs a valid CUE calculation before Professor Cue can grade this chart.</p>
-        )}
-
-        {teachingMode && (
-          <>
-            <div className={styles.candleTutor}>
-              <div><b>GREEN BODY</b><span>Close above open. Buyers controlled that interval, but one green candle is not enough to enter.</span></div>
-              <div><b>RED BODY</b><span>Close below open. Sellers controlled that interval. Watch whether support holds before assuming continuation.</span></div>
-              <div><b>MISSING WICK</b><span>A Heikin-Ashi candle with little opposite wick can show strong directional control; still confirm with real Webull price and CUE checks.</span></div>
-              <div><b>SMALL BODY + 2 WICKS</b><span>Indecision. Treat it as a pause/reversal watch and wait for the next confirmed move.</span></div>
-            </div>
-
-            <details className={styles.learnDetails}>
-              <summary>Professor Cue chart lessons</summary>
-              <div className={styles.group}>
-                {(Object.keys(lessons) as Array<keyof typeof lessons>).map(key=>(
-                  <Button key={key} size="sm" variant={lesson===key?"secondary":"ghost"} onClick={()=>setLesson(key)}>
-                    {lessons[key].title}
-                  </Button>
-                ))}
-              </div>
-              <h4>{lessons[lesson].title}</h4>
-              <p className={styles.reading}>{lessons[lesson].text}</p>
-            </details>
-          </>
-        )}
-      </section>
-    </div>
-  );
-}
+ 
+... (output capped at 40000 chars — re-read with offset/limit)

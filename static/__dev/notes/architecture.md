@@ -41,4 +41,3 @@ Latest chart and brokerage updates:
 - Webull sandbox callback path: /_api/webull/callback.
 - The member workstation now shows Webull connection status and connect/disconnect controls. Public demo users are sent to sign in first; Scout shows Copilot required.
 - Live Webull account authorization still depends on Webull-issued Connect API credentials being supplied through Floot's secure credential connection flow.
-   44

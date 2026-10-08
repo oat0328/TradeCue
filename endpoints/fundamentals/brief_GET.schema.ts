@@ -25,6 +25,7 @@ export type EarningsItem = {
 export type OutputType = {
   symbol: string;
   generatedAt: string;
+  source: "fmp" | "public_news";
   cueSummary: string;
   news: NewsItem[];
   earnings: EarningsItem[];
@@ -50,12 +51,8 @@ export const getFundamentalBrief = async (
 
   if (!result.ok) {
     const error = superjson.parse<{ error: string; code?: string }>(await result.text());
-    const message = error.code === "FMP_NOT_CONNECTED"
-      ? "Fundamental data provider is not connected yet."
-      : error.error || "Unable to load fundamental intelligence";
-    throw new Error(message);
+    throw new Error(error.error || "Unable to load fundamental intelligence");
   }
 
   return superjson.parse<OutputType>(await result.text());
 };
-

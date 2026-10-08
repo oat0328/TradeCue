@@ -32,15 +32,11 @@ export function classifyIntelligence(input:{
   compositeScore:number|null;
   marketChangePercent:number|null;
 }):IntelligenceAction{
-  if(input.fastState==="AVOID"&&input.confirmState==="AVOID"&&input.fastFresh&&input.confirmFresh)return "AVOID";
+  if(input.fastState==="AVOID"&&input.fastFresh)return "AVOID";
   if(
     input.fastState==="BUY"&&
-    input.confirmState==="BUY"&&
     input.fastFresh&&
-    input.confirmFresh&&
-    (input.compositeScore??0)>=75&&
-    (input.marketChangePercent==null||input.marketChangePercent>-1.5)
+    (input.marketChangePercent!=null&&Number.isFinite(input.marketChangePercent)&&input.marketChangePercent>-1.5)
   )return "ENTRY_READY";
   return "WAIT";
 }
-

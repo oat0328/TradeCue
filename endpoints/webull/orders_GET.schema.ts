@@ -11,6 +11,8 @@ export type OutputType={
     orderType:string;
     quantity:string|null;
     filledQuantity:string|null;
+    filledPrice:string|null;
+    filledAt:string|null;
     limitPrice:string|null;
     status:string;
     createdAt:string|null;
@@ -21,4 +23,3 @@ export async function getPaperOrders(accountId:string):Promise<OutputType>{
   const r=await fetch("/_api/webull/orders?"+new URLSearchParams({accountId}),{credentials:"include"});
   return readApiResponse<OutputType>(r,"Unable to load paper orders");
 }
-

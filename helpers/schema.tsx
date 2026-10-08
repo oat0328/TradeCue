@@ -17,6 +17,8 @@ export type CouponKind = "free_access" | "percent_discount";
 
 export type CouponRedemptionStatus = "redeemed" | "released" | "reserved";
 
+export type CueExitAlertStatus = "open" | "resolved";
+
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
@@ -40,6 +42,8 @@ export type MembershipStatus = "active" | "canceled" | "past_due" | "trial";
 export type MembershipTier = "autopilot" | "copilot" | "scout";
 
 export type Numeric = ColumnType<string, number | string, number | string>;
+
+export type PaperOrderIntentStatus = "failed" | "submitted" | "submitting" | "uncertain";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
@@ -130,6 +134,170 @@ export interface CueAuditLog {
   userId: number | null;
 }
 
+export interface CueAutomationControls {
+  autoPaperEnabled: Generated<boolean>;
+  brainEnabled: Generated<boolean>;
+  killSwitch: Generated<boolean>;
+  maxAutoPositions: Generated<number>;
+  perTradeBudget: Generated<Numeric>;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
+export interface CueDailyOutlooks {
+  bias: string | null;
+  createdAt: Generated<Timestamp>;
+  headline: string | null;
+  id: Generated<Int8>;
+  marketMode: string | null;
+  outlookType: string;
+  plan: Generated<Json>;
+  sessionDate: Timestamp;
+  summary: string | null;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+  watchSymbols: Generated<Json>;
+}
+
+export interface CueExitAlerts {
+  accountId: string;
+  attempts: Generated<number>;
+  createdAt: Generated<Timestamp>;
+  id: Generated<Int8>;
+  lastIntentId: string | null;
+  reason: string;
+  resolvedAt: Timestamp | null;
+  state: string;
+  status: Generated<CueExitAlertStatus>;
+  symbol: string;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
+export interface CueJournalExitFills {
+  accountId: string;
+  createdAt: Generated<Timestamp>;
+  filledAt: Timestamp;
+  fillId: string;
+  id: Generated<Int8>;
+  journalId: Int8;
+  price: Numeric;
+  priceSource: Generated<string>;
+  qty: Numeric;
+  userId: number;
+}
+
+export interface CueJournalProcessedFills {
+  accountId: string;
+  allocatedQty: Generated<Numeric>;
+  fillId: string;
+  processedAt: Generated<Timestamp>;
+  qty: Numeric;
+  symbol: string;
+  userId: number;
+}
+
+export interface CueLearningProfiles {
+  avgLoserR: Numeric | null;
+  avgR: Numeric | null;
+  avgWinnerR: Numeric | null;
+  confidence: Generated<string>;
+  expectancy: Numeric | null;
+  id: Generated<Int8>;
+  losses: Generated<number>;
+  maxLosingStreak: Generated<number>;
+  profitFactor: Numeric | null;
+  setup: string;
+  tradeCount: Generated<number>;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+  winRate: Numeric | null;
+  wins: Generated<number>;
+}
+
+export interface CueReliabilitySnapshots {
+  checkedAt: Generated<Timestamp>;
+  details: Generated<Json>;
+  id: Generated<Int8>;
+  latencyMs: number | null;
+  message: string | null;
+  service: string;
+  status: string;
+  userId: number | null;
+}
+
+export interface CueSkipTrainingObservations {
+  action: string;
+  confidence: Numeric;
+  cueScore: Numeric | null;
+  details: Generated<Json>;
+  endPrice: Numeric | null;
+  evaluatedAt: Timestamp | null;
+  evaluationDueAt: Timestamp;
+  id: Generated<Int8>;
+  latestBarTime: Timestamp | null;
+  maePercent: Numeric | null;
+  marketMode: string;
+  mfePercent: Numeric | null;
+  observedAt: Generated<Timestamp>;
+  observedPrice: Numeric;
+  outcome: string | null;
+  reason: string;
+  setupGrade: string;
+  setupScore: number;
+  symbol: string;
+  userId: number;
+}
+
+export interface CueTradeJournal {
+  accountId: string;
+  createdAt: Generated<Timestamp>;
+  cueScore: Numeric | null;
+  details: Generated<Json>;
+  entryOrderId: string | null;
+  entryPrice: Numeric | null;
+  entryTime: Timestamp | null;
+  exitOrderId: string | null;
+  exitPrice: Numeric | null;
+  exitTime: Timestamp | null;
+  id: Generated<Int8>;
+  mae: Numeric | null;
+  mfe: Numeric | null;
+  outcome: string | null;
+  plannedRisk: Numeric | null;
+  quantity: Numeric | null;
+  realizedPnl: Numeric | null;
+  realizedR: Numeric | null;
+  setup: string | null;
+  status: Generated<string>;
+  stopPrice: Numeric | null;
+  symbol: string;
+  target1: Numeric | null;
+  target2: Numeric | null;
+  target3: Numeric | null;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
+export interface CueWorkerAccess {
+  createdAt: Generated<Timestamp>;
+  enabled: Generated<boolean>;
+  paperExecutionEnabled: Generated<boolean>;
+  tokenHash: string;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
+export interface CueWorkerState {
+  completedAt: Timestamp | null;
+  lastAction: Json | null;
+  message: Generated<string>;
+  startedAt: Timestamp | null;
+  status: Generated<string>;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
 export interface FundamentalEvents {
   createdAt: Generated<Timestamp>;
   eventType: string;
@@ -174,6 +342,26 @@ export interface OwnerSetup {
   tokenHash: string;
 }
 
+export interface PaperOrderIntents {
+  accountId: string;
+  brokerOrderId: string | null;
+  childOrderIds: Json | null;
+  clientOrderId: string;
+  comboClientOrderId: string | null;
+  context: Generated<Json>;
+  createdAt: Generated<Timestamp>;
+  error: string | null;
+  id: Generated<Int8>;
+  intentId: string;
+  quantity: Numeric;
+  requestHash: string;
+  side: string;
+  status: Generated<PaperOrderIntentStatus>;
+  symbol: string;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
 export interface PaperOrders {
   accountId: string;
   brokerOrderId: string | null;
@@ -188,6 +376,15 @@ export interface PaperOrders {
   side: string;
   status: Generated<string>;
   symbol: string;
+  updatedAt: Generated<Timestamp>;
+  userId: number;
+}
+
+export interface PushSubscriptions {
+  createdAt: Generated<Timestamp>;
+  id: Generated<Int8>;
+  identity: string;
+  subscription: Json;
   updatedAt: Generated<Timestamp>;
   userId: number;
 }
@@ -279,6 +476,17 @@ export interface WebullCredentials {
   verifiedAt: Generated<Timestamp>;
 }
 
+export interface WebullMarketCache {
+  expiresAt: Timestamp;
+  payload: Json;
+  requestKey: string;
+}
+
+export interface WebullMarketLimits {
+  nextAt: Generated<Timestamp>;
+  poolKey: string;
+}
+
 export interface DB {
   appSettings: AppSettings;
   billingCheckouts: BillingCheckouts;
@@ -287,11 +495,24 @@ export interface DB {
   brokerOauthStates: BrokerOauthStates;
   couponRedemptions: CouponRedemptions;
   cueAuditLog: CueAuditLog;
+  cueAutomationControls: CueAutomationControls;
+  cueDailyOutlooks: CueDailyOutlooks;
+  cueExitAlerts: CueExitAlerts;
+  cueJournalExitFills: CueJournalExitFills;
+  cueJournalProcessedFills: CueJournalProcessedFills;
+  cueLearningProfiles: CueLearningProfiles;
+  cueReliabilitySnapshots: CueReliabilitySnapshots;
+  cueSkipTrainingObservations: CueSkipTrainingObservations;
+  cueTradeJournal: CueTradeJournal;
+  cueWorkerAccess: CueWorkerAccess;
+  cueWorkerState: CueWorkerState;
   fundamentalEvents: FundamentalEvents;
   loginAttempts: LoginAttempts;
   membershipCoupons: MembershipCoupons;
   ownerSetup: OwnerSetup;
+  paperOrderIntents: PaperOrderIntents;
   paperOrders: PaperOrders;
+  pushSubscriptions: PushSubscriptions;
   riskProfiles: RiskProfiles;
   sessions: Sessions;
   userMemberships: UserMemberships;
@@ -300,6 +521,8 @@ export interface DB {
   userWorkspaces: UserWorkspaces;
   watchlistItems: WatchlistItems;
   webullCredentials: WebullCredentials;
+  webullMarketCache: WebullMarketCache;
+  webullMarketLimits: WebullMarketLimits;
 }
 
 
@@ -314,6 +537,8 @@ export const AssetClassArrayValues: [AssetClass, ...AssetClass[]] = ["crypto","e
 export const CouponKindArrayValues: [CouponKind, ...CouponKind[]] = ["free_access","percent_discount"];
 export const CouponDurationUnitArrayValues: [CouponDurationUnit, ...CouponDurationUnit[]] = ["days","months"];
 export const CouponRedemptionStatusArrayValues: [CouponRedemptionStatus, ...CouponRedemptionStatus[]] = ["redeemed","released","reserved"];
+export const PaperOrderIntentStatusArrayValues: [PaperOrderIntentStatus, ...PaperOrderIntentStatus[]] = ["failed","submitted","submitting","uncertain"];
+export const CueExitAlertStatusArrayValues: [CueExitAlertStatus, ...CueExitAlertStatus[]] = ["open","resolved"];
 // Table/column names whose snake_case spelling kysely's default CamelCasePlugin
 // cannot recover from the camelCase name used in code (an underscore directly
 // before a digit, e.g. reminder_48h_sent ⇄ reminder48hSent). The db helper's

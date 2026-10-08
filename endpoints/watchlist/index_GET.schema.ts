@@ -7,6 +7,7 @@ export type WatchItem={
   symbol:string;
   assetType:string;
   sortOrder:number;
+  alertEnabled:boolean;
   price:number|null;
   change:number|null;
   changePercent:number|null;
@@ -17,7 +18,6 @@ export type OutputType={
   quoteMessage:string|null;
 };
 export async function getWatchlist():Promise<OutputType>{
-  const r=await fetch("/_api/watchlist",{credentials:"include"});
+  const r=await fetch("/_api/watchlist/index",{credentials:"include"});
   return readApiResponse<OutputType>(r,"Unable to load watchlist");
 }
-

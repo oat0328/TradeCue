@@ -19,16 +19,20 @@ describe("TradeCUE hunter and intelligence rules",()=>{
     })).toBe("ENTRY_READY");
   });
 
-  it("requires 5m and 15m alignment for multi-timeframe entry",()=>{
+  it("uses the fresh 5m setup as the entry trigger; 15m is context only",()=>{
     expect(classifyIntelligence({
       fastState:"BUY",confirmState:"WAIT",fastFresh:true,confirmFresh:true,compositeScore:90,marketChangePercent:.4,
-    })).toBe("WAIT");
+    })).toBe("ENTRY_READY");
   });
 
-  it("allows multi-timeframe entry only when alignment, freshness, score and market context pass",()=>{
+  it("does not treat absent or invalid market context as permission to enter",()=>{
+    for(const marketChangePercent of [null,NaN,-2]){
+      expect(classifyIntelligence({fastState:"BUY",confirmState:"BUY",fastFresh:true,confirmFresh:true,compositeScore:90,marketChangePercent})).toBe("WAIT");
+    }
+  });
+  it("allows entry when the fresh 5m trigger and market context pass",()=>{
     expect(classifyIntelligence({
-      fastState:"BUY",confirmState:"BUY",fastFresh:true,confirmFresh:true,compositeScore:82,marketChangePercent:.3,
+      fastState:"BUY",confirmState:"WAIT",fastFresh:true,confirmFresh:false,compositeScore:50,marketChangePercent:.3,
     })).toBe("ENTRY_READY");
   });
 });
-

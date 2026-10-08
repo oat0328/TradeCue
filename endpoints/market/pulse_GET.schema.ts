@@ -29,4 +29,3 @@ export async function getMarketPulse():Promise<OutputType>{
   const r=await fetch("/_api/market/pulse",{credentials:"include"});
   return readApiResponse<OutputType>(r,"Unable to load Webull market pulse");
 }
-

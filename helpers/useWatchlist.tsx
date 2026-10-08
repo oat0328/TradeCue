@@ -8,15 +8,17 @@ export function useWatchlist(enabled=true){
     queryKey:["watchlist"],
     queryFn:getWatchlist,
     enabled,
-    staleTime:30_000,
-    refetchInterval:60_000,
-    refetchIntervalInBackground:false,
+    staleTime:5_000,
+    refetchInterval:15_000,
+    refetchIntervalInBackground:true,
     retry:false,
   });
   const mutate=useMutation({
     mutationFn:postWatchlist,
-    onSuccess:()=>cache.invalidateQueries({queryKey:["watchlist"]}),
+    onSuccess:async()=>{
+      await cache.invalidateQueries({queryKey:["watchlist"]});
+      await cache.refetchQueries({queryKey:["watchlist"],type:"active"});
+    },
   });
   return {list,mutate};
 }
-

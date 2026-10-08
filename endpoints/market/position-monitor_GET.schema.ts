@@ -10,6 +10,11 @@ export type PositionMonitorRow={
   unrealizedPnl:string|null;
   lastPrice:number|null;
   cue:"HOLD"|"WATCH"|"EXIT REVIEW"|"DATA CHECK";
+  commanderAction:"HOLD"|"RAISE STOP"|"TAKE 25%"|"TAKE 50%"|"EXIT"|"DATA CHECK";
+  currentR:number|null;
+  peakR?:number|null;
+  suggestedStop:number|null;
+  structure:string|null;
   cueScore:number|null;
   fresh:boolean;
   stop:number|null;
@@ -23,4 +28,3 @@ export async function getPositionMonitor(accountId?:string):Promise<OutputType>{
   const r=await fetch("/_api/market/position-monitor"+(search.size?"?"+search.toString():""),{credentials:"include"});
   return readApiResponse<OutputType>(r,"Unable to load position monitor");
 }
-

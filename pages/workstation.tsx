@@ -4,8 +4,6 @@ import {
   BookOpen,
   BriefcaseBusiness,
   CandlestickChart,
-  Clock3,
-  Gauge,
   LayoutDashboard,
   Link2,
   LockKeyhole,
@@ -13,31 +11,60 @@ import {
   Newspaper,
   Radar,
   ShieldCheck,
-  Sparkles,
   WalletCards,
+  Beaker,
+  Maximize2,
+  Minimize2,
+  Star,
+  Bot,
 } from "lucide-react";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { Sheet,SheetContent,SheetDescription,SheetHeader,SheetTitle } from "../components/Sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs";
-import CueVisionChart from "../components/CueVisionChart";
+import { CueProChart } from "../components/CueProChart";
 import { WebullPanel } from "../components/WebullPanel";
+import { WebullLivePanel } from "../components/WebullLivePanel";
 import { PaperOrderPanel } from "../components/PaperOrderPanel";
 import { TradePlanner } from "../components/TradePlanner";
 import { WatchlistPanel } from "../components/WatchlistPanel";
-import { OpportunityCommandStrip } from "../components/OpportunityCommandStrip";
+import { CueHunterPanel } from "../components/CueHunterPanel";
+import { CueOpportunityStrip } from "../components/CueOpportunityStrip";
+import { CueOperatorPanel } from "../components/CueOperatorPanel";
+import { CueAutoPaperTrader } from "../components/CueAutoPaperTrader";
+import { CueJournalPanel } from "../components/CueJournalPanel";
+import { MacroRiskGuard } from "../components/MacroRiskGuard";
+import { CueLabPanel } from "../components/CueLabPanel";
+import { CueFuturesPanel } from "../components/CueFuturesPanel";
+import { FundedRiskPanel } from "../components/FundedRiskPanel";
 import { MarketPulsePanel } from "../components/MarketPulsePanel";
 import { PositionMonitorPanel } from "../components/PositionMonitorPanel";
 import { CueCheatSheet } from "../components/CueCheatSheet";
+import { ProfessorCueLive } from "../components/ProfessorCueLive";
+import {OmegaProofPanel} from "../components/OmegaProofPanel";
+import { BuildUpdateGuard } from "../components/BuildUpdateGuard";
+import { PortfolioBrainPanel } from "../components/PortfolioBrainPanel";
+import { CueLearningPanel } from "../components/CueLearningPanel";
+import { ReliabilityCenter } from "../components/ReliabilityCenter";
+import { CueNewsCommandCenter } from "../components/CueNewsCommandCenter";
 import { useAuth } from "../helpers/useAuth";
 import { useEntitlements } from "../helpers/useEntitlements";
 import { useFundamentalBrief } from "../helpers/useFundamentalBrief";
 import { useWebullAccount } from "../helpers/useWebullAccount";
+import { useWebullHistory } from "../helpers/useWebullHistory";
 import { useMarketIntelligence } from "../helpers/useMarketIntelligence";
 import { useWebullFundamentals } from "../helpers/useWebullFundamentals";
 import { useWatchlist } from "../helpers/useWatchlist";
+import { useSymbolSearch } from "../helpers/useSymbolSearch";
+import { useCueJournal } from "../helpers/useCueJournal";
+import {useChartTrades} from "../helpers/useChartTrades";
+import {chartFrameSeconds} from "../helpers/chartTradeFills";
+import { useMacroRisk } from "../helpers/useMacroRisk";
 import { calculateCueSignal } from "../helpers/cueSignal";
-import { buildTradeDecision } from "../helpers/tradeDecision";
+import { calculateMarketStructure } from "../helpers/marketStructure";
+import { TRADECUE_BUILD_ID } from "../helpers/buildVersion";
+import { useAutomationControl } from "../helpers/useAutomationControl";
 import styles from "./workstation.module.css";
 
 const plans = {
@@ -46,7 +73,7 @@ const plans = {
   autopilot: { name: "Autopilot Pro Desk", price: "$249" },
 } as const;
 
-const timeframes = ["1m","3m","5m","15m","30m","1H","4H","1D","1W"] as const;
+const timeframes = ["5m","15m","1H","4H"] as const;
 
 function money(value: string | null | undefined) {
   if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
@@ -101,26 +128,6 @@ function marketSession(date = new Date()) {
   return {label:"OVERNIGHT", detail:"Eligible Webull 24/5 symbols", active:true};
 }
 
-function ptClock(date:Date){
-  return {
-    date:new Intl.DateTimeFormat("en-US",{timeZone:"America/Los_Angeles",weekday:"short",month:"short",day:"numeric"}).format(date),
-    time:new Intl.DateTimeFormat("en-US",{timeZone:"America/Los_Angeles",hour:"numeric",minute:"2-digit",second:"2-digit"}).format(date)+" PT",
-  };
-}
-
-function cutoffCountdown(date:Date,cutoff="12:30"){
-  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Los_Angeles",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(date);
-  const get=(type:string)=>Number(parts.find(part=>part.type===type)?.value??0);
-  const current=get("hour")*3600+get("minute")*60+get("second");
-  const [h,m]=cutoff.split(":").map(Number);
-  const target=h*3600+m*60;
-  const remaining=Math.max(0,target-current);
-  const hh=Math.floor(remaining/3600);
-  const mm=Math.floor((remaining%3600)/60);
-  const ss=remaining%60;
-  return {seconds:remaining,label:String(hh).padStart(2,"0")+"h "+String(mm).padStart(2,"0")+"m "+String(ss).padStart(2,"0")+"s"};
-}
-
 export default function WorkstationPage() {
   const { authState, logout } = useAuth();
   const isMember = authState.type === "authenticated";
@@ -131,33 +138,60 @@ export default function WorkstationPage() {
   const [symbolDraft, setSymbolDraft] = useState("NVDA");
   const [timeframe, setTimeframe] = useState<(typeof timeframes)[number]>("5m");
   const [accountId, setAccountId] = useState<string>();
-  const [deskMode, setDeskMode] = useState<"teach"|"pro">("teach");
-  const [clockNow,setClockNow]=useState(()=>new Date());
+  const [deskMode, setDeskMode] = useState<"teach"|"pro">("pro");
+  const [chartFocus, setChartFocus] = useState(false);
+  const [tradeAmountText,setTradeAmountText]=useState("500");
+  const [orderTicketOpen,setOrderTicketOpen]=useState(false);
+  const [newsOpen,setNewsOpen]=useState(false);
+  const [deskView,setDeskView]=useState<"stocks"|"markets"|"screener"|"advanced"|"axiom"|"orders"|"journal"|"news"|"account">("stocks");
+  const [orderTicketSide,setOrderTicketSide]=useState<"BUY"|"SELL"|null>(null);
+  const [lowerTab,setLowerTab]=useState<"fundamentals"|"crypto"|"futures"|"risk">("fundamentals");
+  const [wakeState,setWakeState]=useState<"ON"|"OFF"|"UNAVAILABLE"|"BLOCKED">("OFF");
+  const openOrderTicket=(side?:"BUY"|"SELL")=>{
+    setOrderTicketSide(side??null);
+    setOrderTicketOpen(true);
+  };
 
   const webull = useWebullAccount(isMember, symbol, timeframe, accountId);
-  const watchlist = useWatchlist(isMember);
+  const executionWebull = useWebullAccount(isMember, symbol, "5m", accountId);
+  const history = useWebullHistory(Boolean(isMember&&webull.account.data),symbol,timeframe);
   const intelligence = useMarketIntelligence(Boolean(isMember && webull.account.data), symbol);
   const webullFundamentals = useWebullFundamentals(Boolean(isMember && webull.account.data), symbol);
   const fundamental = useFundamentalBrief(symbol, isMember);
+  const currentWatchlist = useWatchlist(isMember);
+  const symbolSearch=useSymbolSearch(symbolDraft,isMember&&symbolDraft.trim().length>=2&&symbolDraft.trim().toUpperCase()!==symbol);
+  const journal=useCueJournal(isMember);
+  const macroRisk=useMacroRisk(isMember);
+  const automationControl=useAutomationControl(isMember);
 
   const tier = entitlements.data?.membership.tier ?? "copilot";
   const plan = plans[tier];
+  const assistedLiveTrading=Boolean(entitlements.data?.features.includes("assisted_live_trading"));
   const bars = webull.bars.data?.bars ?? [];
+  const executionBars = executionWebull.bars.data?.bars ?? [];
+  const chartBars=useMemo(()=>{
+    const byTime=new Map<string,(typeof bars)[number]>();
+    for(const bar of history.data?.bars??[])byTime.set(bar.time,bar);
+    for(const bar of bars)byTime.set(bar.time,bar);
+    return [...byTime.values()].sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)).slice(-1650);
+  },[history.data?.bars,bars]);
+  const chartTradeFrom=chartBars[0]?.time;
+  const chartTradeLast=chartBars.at(-1)?.time;
+  const chartTradeTo=chartTradeLast&&Number.isFinite(Date.parse(chartTradeLast))?new Date(Date.parse(chartTradeLast)+chartFrameSeconds(timeframe)*1000).toISOString():undefined;
+  const chartTrades=useChartTrades(accountId||webull.account.data?.selectedAccountId,symbol,chartTradeFrom,chartTradeTo);
   const latest = bars[bars.length - 1];
   const previous = bars[bars.length - 2];
+  const executionLatest = executionBars[executionBars.length - 1];
   const change = percentChange(latest?.close, previous?.close);
   const chartReady = bars.length > 0;
-  const cueSignal = useMemo(() => calculateCueSignal(bars), [bars]);
+  const cueSignal = useMemo(() => calculateCueSignal(executionBars), [executionBars]);
+  const chartSignal = useMemo(() => calculateCueSignal(bars), [bars]);
+  const structure = useMemo(()=>calculateMarketStructure(bars),[bars]);
   const freshnessMinutes: Record<(typeof timeframes)[number], number> = {
-    "1m": 10,
-    "3m": 15,
     "5m": 20,
     "15m": 45,
-    "30m": 90,
     "1H": 180,
     "4H": 720,
-    "1D": 4320,
-    "1W": 14400,
   };
   const latestAgeMinutes =
     latest?.time && Number.isFinite(Date.parse(latest.time))
@@ -165,28 +199,28 @@ export default function WorkstationPage() {
       : null;
   const dataFresh =
     latestAgeMinutes != null && latestAgeMinutes <= freshnessMinutes[timeframe];
+  const executionLatestAgeMinutes =
+    executionLatest?.time && Number.isFinite(Date.parse(executionLatest.time))
+      ? Math.max(0, (Date.now() - Date.parse(executionLatest.time)) / 60000)
+      : null;
+  const executionDataFresh =
+    executionLatestAgeMinutes != null && executionLatestAgeMinutes <= freshnessMinutes["5m"];
 
   const risk = entitlements.data?.risk;
-  const session = marketSession(clockNow);
+  const session = marketSession();
   const account = webull.account.data;
-  const pt = ptClock(clockNow);
-  const exitClock = cutoffCountdown(clockNow,risk?.dayTradeFlatTimePt ?? "12:30");
-  const dayPnlNumber=Number(account?.balance.dayPnl ?? 0);
-  const maxDailyLoss=Number(risk?.maxDailyLoss ?? 0);
-  const dailyRiskUsed=Math.max(0,-Math.min(0,Number.isFinite(dayPnlNumber)?dayPnlNumber:0));
-  const dailyRiskPercent=maxDailyLoss>0?Math.min(100,Math.round(dailyRiskUsed/maxDailyLoss*100)):0;
   const signedOut = authState.type === "unauthenticated";
   const position = account?.positions.find(
     (item) => item.symbol.toUpperCase() === symbol.toUpperCase() && Number(item.quantity ?? 0) > 0,
   );
   const displayedCue = cueSignal.available
-    ? !dataFresh && !["1D", "1W"].includes(timeframe)
+    ? !executionDataFresh
       ? "WAIT"
       : position
         ? (cueSignal.state === "AVOID" || intelligence.data?.action === "AVOID") ? "SELL" : "HOLD"
         : (cueSignal.state === "AVOID" || intelligence.data?.action === "AVOID")
           ? "AVOID"
-          : cueSignal.state === "BUY" && (intelligence.data ? intelligence.data.action === "ENTRY_READY" : true)
+          : cueSignal.state === "BUY" && macroRisk.data?.state !== "BLOCKED" && (intelligence.data ? intelligence.data.action === "ENTRY_READY" : true)
             ? "BUY"
             : "WAIT"
     : null;
@@ -216,49 +250,11 @@ export default function WorkstationPage() {
           ? styles.actionSell
           : styles.actionWait;
 
-  const tradeDecision=buildTradeDecision({
-    signal:cueSignal,
-    intelligenceAction:intelligence.data?.action ?? null,
-    currentPrice:latest?.close,
-    fresh:dataFresh,
-    hasPosition:Boolean(position),
-    marketActive:session.active,
-    marketLabel:session.label,
-  });
-
-  const decisionActionClass=["ENTER_NOW","HOLD","TAKE_PARTIAL","TAKE_PROFIT"].includes(tradeDecision.state)
-    ? styles.actionBuy
-    : ["EXIT_NOW","EXIT_REVIEW","STAY_AWAY"].includes(tradeDecision.state)
-      ? styles.actionSell
-      : styles.actionWait;
-
-  const sizing=useMemo(()=>{
-    if(!cueSignal.available||!cueSignal.plan)return null;
-    const entry=(cueSignal.plan.entryLow+cueSignal.plan.entryHigh)/2;
-    const stop=cueSignal.plan.stop;
-    const perShareRisk=Math.max(0,entry-stop);
-    const maxRisk=Number(risk?.maxRiskPerTrade);
-    const cash=Number(account?.balance.buyingPower);
-    if(!Number.isFinite(entry)||entry<=0||perShareRisk<=0)return null;
-    const riskQty=Number.isFinite(maxRisk)&&maxRisk>0?Math.floor(maxRisk/perShareRisk):0;
-    const cashQty=Number.isFinite(cash)&&cash>0?Math.floor(cash/entry):0;
-    const shares=Math.max(0,Math.min(riskQty||cashQty,cashQty||riskQty));
-    const plannedLoss=shares*perShareRisk;
-    const potentialTp1=shares*Math.max(0,cueSignal.plan.target1-entry);
-    const potentialTp2=shares*Math.max(0,cueSignal.plan.target2-entry);
-    return {entry,stop,shares,plannedLoss,potentialTp1,potentialTp2,maxRisk,cash};
-  },[cueSignal,risk?.maxRiskPerTrade,account?.balance.buyingPower]);
-
   useEffect(() => {
     if (webull.account.data?.selectedAccountId && !accountId) {
       setAccountId(webull.account.data.selectedAccountId);
     }
   }, [webull.account.data?.selectedAccountId, accountId]);
-
-  useEffect(()=>{
-    const timer=window.setInterval(()=>setClockNow(new Date()),1000);
-    return ()=>window.clearInterval(timer);
-  },[]);
 
   const submitSymbol = (event: React.FormEvent) => {
     event.preventDefault();
@@ -291,9 +287,65 @@ export default function WorkstationPage() {
           ? <Badge variant="success">WEBULL SANDBOX • AUTO REFRESH</Badge>
           : <Badge variant="warning">CONNECTION REQUIRED</Badge>;
 
-  const watchingCurrent=Boolean(watchlist.list.data?.items.some(item=>item.symbol.toUpperCase()===symbol.toUpperCase()));
-
   const latestEarnings = fundamental.data?.earnings?.[0];
+  const tradeAmount=Math.max(0,Number(tradeAmountText)||0);
+  const activePlan=cueSignal.available?cueSignal.plan:null;
+  const protectedTrade=journal.activity.data?.trades.find(row=>
+    row.symbol.toUpperCase()===symbol.toUpperCase()&&
+    row.exitTime==null&&
+    row.entryPrice!=null&&row.stopPrice!=null&&row.target1!=null&&row.target2!=null&&row.target3!=null
+  );
+  const protectedLevels=protectedTrade?{
+    entryLow:protectedTrade.entryPrice!,
+    entryHigh:protectedTrade.entryPrice!,
+    stop:protectedTrade.stopPrice!,
+    target1:protectedTrade.target1!,
+    target2:protectedTrade.target2!,
+    target3:protectedTrade.target3!,
+  }:null;
+  const planEntry=activePlan?activePlan.entryHigh:null;
+  const planShares=planEntry&&tradeAmount>0?Math.floor(tradeAmount/planEntry):0;
+  const planRisk=activePlan&&planShares>0?(activePlan.entryHigh-activePlan.stop)*planShares:null;
+  const planProfit1=activePlan&&planShares>0?(activePlan.target1-activePlan.entryHigh)*planShares:null;
+  const planProfit2=activePlan&&planShares>0?(activePlan.target2-activePlan.entryHigh)*planShares:null;
+  const planProfit3=activePlan&&planShares>0?(activePlan.target3-activePlan.entryHigh)*planShares:null;
+  const watchedItem = currentWatchlist.list.data?.items.find(item=>item.symbol.toUpperCase()===symbol.toUpperCase());
+
+  useEffect(()=>{
+    if(!chartFocus)return;
+    const close=(event:KeyboardEvent)=>{if(event.key==="Escape")setChartFocus(false);};
+    window.addEventListener("keydown",close);
+    return ()=>window.removeEventListener("keydown",close);
+  },[chartFocus]);
+  useEffect(()=>{
+    let sentinel:any=null;
+    let cancelled=false;
+    const acquire=async()=>{
+      if(!isMember||!automationControl.query.data?.autoPaperEnabled){setWakeState("OFF");return;}
+      if(document.visibilityState!=="visible")return;
+      const wake=(navigator as any).wakeLock;
+      if(!wake?.request){setWakeState("UNAVAILABLE");return;}
+      try{
+        sentinel=await wake.request("screen");
+        if(cancelled){await sentinel.release().catch(()=>{});return;}
+        setWakeState("ON");
+        sentinel.addEventListener("release",()=>{sentinel=null;if(!cancelled)setWakeState("OFF");});
+      }catch{if(!cancelled)setWakeState("BLOCKED");}
+    };
+    const onVisibility=()=>{if(document.visibilityState==="visible"&&!sentinel)void acquire();};
+    void acquire();
+    document.addEventListener("visibilitychange",onVisibility);
+    return ()=>{cancelled=true;document.removeEventListener("visibilitychange",onVisibility);if(sentinel)void sentinel.release().catch(()=>{});};
+  },[isMember,automationControl.query.data?.autoPaperEnabled]);
+  useEffect(()=>{
+    if(!isMember||!cueSignal.available||!displayedCue||!executionDataFresh)return;
+    journal.log.mutate({
+      symbol,timeframe:"5m",action:displayedCue,score:cueSignal.score,price:executionLatest?.close??null,
+      structure:structure.summary,plan:cueSignal.plan,
+    });
+  // only state/symbol/timeframe changes should journal; mutation identity is intentionally omitted
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[isMember,symbol,displayedCue,executionDataFresh,cueSignal.available,cueSignal.available?cueSignal.score:null,structure.summary]);
   const epsRead = latestEarnings?.epsActual != null && latestEarnings?.epsEstimated != null
     ? latestEarnings.epsActual >= latestEarnings.epsEstimated ? "Beat" : "Miss"
     : "Unavailable";
@@ -303,32 +355,55 @@ export default function WorkstationPage() {
 
   return (
     <div className={styles.shell}>
+      <BuildUpdateGuard/>
+      {isMember&&<Sheet open={orderTicketOpen} onOpenChange={(open)=>{setOrderTicketOpen(open);if(!open)setOrderTicketSide(null);}}>
+        <SheetContent side="right" className={styles.orderSheet}>
+          <SheetHeader>
+            <SheetTitle>TradeCUE Full Order Ticket</SheetTitle>
+            <SheetDescription>Webull PaperTrade only. Review the symbol, side, quantity and price before submitting.</SheetDescription>
+          </SheetHeader>
+          <div className={styles.orderSheetBody}>
+            <PaperOrderPanel
+              enabled={Boolean(webull.account.data)}
+              accountId={accountId || webull.account.data?.selectedAccountId}
+              symbol={symbol}
+              latestPrice={executionLatest?.close}
+              positionQuantity={Number(position?.quantity ?? 0)}
+              longOnly={risk?.longOnly ?? true}
+              suggestedSide={orderTicketSide??(displayedCue==="BUY"?"BUY":displayedCue==="SELL"?"SELL":null)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>}
+      <Sheet open={newsOpen} onOpenChange={setNewsOpen}>
+        <SheetContent side="left" className={styles.newsSheet}>
+          <SheetHeader><SheetTitle>Market News · {symbol}</SheetTitle><SheetDescription>Headlines, available summaries, and links to the original reporting.</SheetDescription></SheetHeader>
+          <CueNewsCommandCenter expanded symbol={symbol} source={fundamental.data?.source??null} news={fundamental.data?.news??[]} summary={fundamental.data?.cueSummary??null} macroState={macroRisk.data?.state} loading={fundamental.isFetching} error={fundamental.error instanceof Error?fundamental.error.message:null}/>
+        </SheetContent>
+      </Sheet>
       <header className={styles.topbar}>
         <Link to="/" className={styles.brand}>
           <span className={styles.logoMark}>///</span>
           <span>Trade<strong>CUE</strong></span>
-          <small>AI TRADING COPILOT</small>
         </Link>
 
-        <div className={styles.marketHeader}>
-          <div className={session.active?styles.marketOpen:styles.marketClosed}><span/>{session.label}</div>
-          <div className={styles.clockBlock}><small>{pt.date}</small><strong>{pt.time}</strong></div>
-          <div className={styles.exitTimer}>
-            <Clock3 size={18}/>
-            <div><small>Exit by {risk?.dayTradeFlatTimePt ?? "12:30"} PM PT</small><strong>{exitClock.seconds>0?exitClock.label:"CUT-OFF REACHED"}</strong></div>
-          </div>
-          <div className={styles.dailyRisk}>
-            <div><small>Daily Risk</small><strong>{money(String(dailyRiskUsed))} / {money(String(maxDailyLoss || 0))}</strong></div>
-            <div className={styles.riskTrack}><span style={{width:dailyRiskPercent+"%"}}/></div>
-            <em>{dailyRiskPercent}%</em>
-          </div>
+        <div className={styles.topStats}>
+          <span>Buying Power <strong>{money(account?.balance.buyingPower)}</strong></span>
+          <span>Account Equity <strong>{money(account?.balance.equity)}</strong></span>
+          <span>Day P&L <strong className={Number(account?.balance.dayPnl ?? 0) >= 0 ? styles.positive : undefined}>{money(account?.balance.dayPnl)}</strong></span>
         </div>
 
         <div className={styles.topActions}>
-          <div className={styles.accountMini}>
-            <small>Buying Power</small><strong>{money(account?.balance.buyingPower)}</strong>
+          <span className={styles.buildBadge}>LIVE BUILD {TRADECUE_BUILD_ID}</span>
+          <button className={styles.botJump} onClick={()=>setNewsOpen(true)}><Newspaper size={14}/>NEWS</button>
+          <button className={styles.botJump} onClick={()=>setDeskView("axiom")}><Bot size={14}/>OMEGA</button>
+          {isMember&&<button className={styles.orderJump} onClick={()=>openOrderTicket()}><WalletCards size={14}/>ORDER TICKET</button>}
+          <div className={styles.modeSwitch} aria-label="Workstation mode">
+            <button className={deskMode==="teach"?styles.modeActive:undefined} onClick={()=>setDeskMode("teach")}><BookOpen size={13}/>Teach</button>
+            <button className={deskMode==="pro"?styles.modeActive:undefined} onClick={()=>setDeskMode("pro")}><CandlestickChart size={13}/>Pro</button>
           </div>
-          <Link to="/membership" className={styles.membershipLink}>{plan.name}</Link>
+          {dataBadge}
+          <Link to="/membership" className={styles.membershipLink}>Membership</Link>
           {isMember && (
             <Button
               variant="ghost"
@@ -338,7 +413,7 @@ export default function WorkstationPage() {
                 window.location.assign("/login");
               }}
             >
-              <LogOut size={15} />
+              <LogOut size={15} /> Log out
             </Button>
           )}
         </div>
@@ -346,15 +421,16 @@ export default function WorkstationPage() {
 
       <div className={styles.layout}>
         <aside className={styles.sidebar}>
-          <nav>
-            <button onClick={() => scrollTo("command-center")} className={styles.activeNav}><LayoutDashboard size={17} /><span>Command Center</span></button>
-            <button onClick={() => scrollTo("hunter")}><Radar size={17} /><span>Money Hunter</span></button>
-            <button onClick={() => scrollTo("watchlist")}><WalletCards size={17} /><span>Watchlists</span></button>
-            <button onClick={() => scrollTo("position-monitor")}><Gauge size={17} /><span>Portfolio</span></button>
-            <button onClick={() => scrollTo("vision")}><CandlestickChart size={17} /><span>Cue Vision</span></button>
-            <button onClick={() => scrollTo("fundamentals")}><Newspaper size={17} /><span>Fundamental Intelligence</span></button>
-            <button onClick={() => scrollTo("portfolio")}><WalletCards size={17} /><span>Portfolio & Webull</span></button>
-            <button onClick={() => scrollTo("risk")}><ShieldCheck size={17} /><span>Risk Firewall</span></button>
+          <nav aria-label="Workstation">
+            <button aria-current={deskView==="stocks"?"page":undefined} onClick={()=>setDeskView("stocks")}><CandlestickChart size={20}/><span>Dashboard</span></button>
+            <button onClick={()=>setDeskView("markets")}><LayoutDashboard size={17}/><span>Markets</span></button>
+            <button onClick={()=>setDeskView("screener")}><Radar size={17}/><span>Screener</span></button>
+            <button aria-current={deskView==="news"?"page":undefined} onClick={()=>setDeskView("news")}><Newspaper size={20}/><span>News</span></button>
+            <button aria-current={deskView==="orders"?"page":undefined} onClick={()=>setDeskView("orders")}><WalletCards size={20}/><span>Orders</span></button>
+            <button aria-current={deskView==="axiom"?"page":undefined} onClick={()=>setDeskView("axiom")}><Bot size={20}/><span>Omega</span></button>
+            <button aria-current={deskView==="journal"?"page":undefined} onClick={()=>setDeskView("journal")}><BookOpen size={20}/><span>Journal</span></button>
+            <button aria-current={deskView==="account"?"page":undefined} onClick={()=>setDeskView("account")}><WalletCards size={20}/><span>Account</span></button>
+            <button onClick={()=>setDeskView("advanced")}><Beaker size={17}/><span>Advanced</span></button>
           </nav>
 
           <div className={styles.trimCard}>
@@ -373,21 +449,14 @@ export default function WorkstationPage() {
           {isOwner && <Link to="/admin" className={styles.adminLink}><BriefcaseBusiness size={15} />Owner/Admin</Link>}
         </aside>
 
-        <main className={styles.main} id="command-center">
-          <div className={styles.pageHead}>
+        <main className={styles.main} id="command-center" data-desk-view={deskView}>
+          {deskMode==="teach"&&<div className={styles.pageHead}>
             <div>
               <span>COMMAND CENTER</span>
               <h1>{isMember ? plan.name : "TradeCUE Market Workstation"}</h1>
               <p>Scan → understand → plan → paper trade. Every CUE shows its data source.</p>
             </div>
-            <div className={styles.headControls}>
-              <div className={styles.modeSwitch} aria-label="Workstation mode">
-                <button className={deskMode==="teach"?styles.modeActive:undefined} onClick={()=>setDeskMode("teach")}><BookOpen size={13}/>Teach</button>
-                <button className={deskMode==="pro"?styles.modeActive:undefined} onClick={()=>setDeskMode("pro")}><CandlestickChart size={13}/>Pro</button>
-              </div>
-              {dataBadge}
-            </div>
-          </div>
+          </div>}
 
           {signedOut && (
             <section className={styles.connectionNotice}>
@@ -400,7 +469,7 @@ export default function WorkstationPage() {
             </section>
           )}
 
-          <section className={styles.statusGrid} aria-label="TradeCUE live status">
+          {deskMode==="teach"&&<section className={styles.statusGrid} aria-label="TradeCUE live status">
             <article>
               <small>Market</small>
               <strong className={session.active?styles.positive:styles.actionWait}>{session.label}</strong>
@@ -415,7 +484,7 @@ export default function WorkstationPage() {
             </article>
             <article className={styles.actionTile}>
               <small>TradeCUE now</small>
-              <strong className={decisionActionClass}>{tradeDecision.headline}</strong>
+              <strong className={actionClass}>{actionHeadline}</strong>
               <span>{cueSignal.available ? "CUE " + cueSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
             </article>
             <article>
@@ -441,11 +510,46 @@ export default function WorkstationPage() {
                   : "Connect Webull PaperTrade"}
               </span>
             </article>
-          </section>
+          </section>}
+
+          <div className={styles.deskAutomation}>
+              <CueAutoPaperTrader
+                enabled={Boolean(webull.account.data)}
+                accountId={accountId || webull.account.data?.selectedAccountId}
+                buyingPower={Number(account?.balance.buyingPower??0)}
+                maxRiskPerTrade={Math.min(
+                  Number(risk?.maxRiskPerTrade??0),
+                  Math.max(0,Number(account?.balance.equity??account?.balance.buyingPower??0))*.01,
+                )}
+                onOpenSymbol={next=>{setDeskView("stocks");setSymbol(next);setSymbolDraft(next);setTimeout(()=>scrollTo("vision"),0);}}
+              />
+          </div>
+          <div className={styles.feedStrip}><strong>PAPER ONLY · {symbol}</strong><span>{dataFresh?"Chart data current":"Chart data unavailable or stale"} · Last candle {latestBarLabel}</span><span>Signal: {actionHeadline} · Omega executes on 5m</span><span>Keep-awake: <strong>{wakeState}</strong></span></div>
+          <CueOpportunityStrip
+            enabled={Boolean(webull.account.data)&&deskView==="markets"}
+            onOpenSymbol={(nextSymbol)=>{
+              setDeskView("stocks");
+              setSymbol(nextSymbol);
+              setSymbolDraft(nextSymbol);
+              setTimeout(()=>scrollTo("vision"),0);
+            }}
+          />
+
+          <CueNewsCommandCenter
+            expanded={deskView==="news"}
+            symbol={symbol}
+            source={fundamental.data?.source??null}
+            news={fundamental.data?.news??[]}
+            summary={fundamental.data?.cueSummary??null}
+            macroState={macroRisk.data?.state}
+            loading={fundamental.isFetching}
+            error={fundamental.error instanceof Error?fundamental.error.message:null}
+          />
 
           <MarketPulsePanel
-            enabled={Boolean(webull.account.data)}
+            enabled={Boolean(webull.account.data)&&deskView==="markets"}
             onOpenSymbol={(nextSymbol) => {
+              setDeskView("stocks");
               setSymbol(nextSymbol);
               setSymbolDraft(nextSymbol);
               setTimeout(() => scrollTo("vision"), 0);
@@ -457,7 +561,8 @@ export default function WorkstationPage() {
               <WatchlistPanel
                 enabled={isMember}
                 onOpenSymbol={(nextSymbol) => {
-                  setSymbol(nextSymbol);
+                  setDeskView("stocks");
+              setSymbol(nextSymbol);
                   setSymbolDraft(nextSymbol);
                   setTimeout(() => scrollTo("vision"), 0);
                 }}
@@ -468,12 +573,12 @@ export default function WorkstationPage() {
                 onAccount={(id) => setAccountId(id)}
                 className={styles.webullPanel}
               />
-              <OpportunityCommandStrip
+              <WebullLivePanel enabled={isMember&&assistedLiveTrading} symbol={symbol} latestPrice={executionLatest?.close}/>
+              <CueHunterPanel
                 enabled={Boolean(webull.account.data)}
-                buyingPower={Number(account?.balance.buyingPower ?? 0)}
-                maxRiskPerTrade={risk?.maxRiskPerTrade}
                 onOpenSymbol={(nextSymbol) => {
-                  setSymbol(nextSymbol);
+                  setDeskView("stocks");
+              setSymbol(nextSymbol);
                   setSymbolDraft(nextSymbol);
                   setTimeout(() => scrollTo("vision"), 0);
                 }}
@@ -482,28 +587,20 @@ export default function WorkstationPage() {
                 enabled={Boolean(webull.account.data)}
                 accountId={accountId || webull.account.data?.selectedAccountId}
                 onOpenSymbol={(nextSymbol) => {
-                  setSymbol(nextSymbol);
+                  setDeskView("stocks");
+              setSymbol(nextSymbol);
                   setSymbolDraft(nextSymbol);
                   setTimeout(() => scrollTo("vision"), 0);
                 }}
-              />
-              <PaperOrderPanel
-                enabled={Boolean(webull.account.data)}
-                accountId={accountId || webull.account.data?.selectedAccountId}
-                symbol={symbol}
-                latestPrice={latest?.close}
-                positionQuantity={Number(position?.quantity ?? 0)}
-                longOnly={risk?.longOnly ?? true}
-                suggestedSide={displayedCue==="BUY"?"BUY":displayedCue==="SELL"?"SELL":null}
               />
             </>
           )}
 
           {deskMode==="pro" && <section className={styles.radar} id="radar">
             <div className={styles.sectionTitle}>
-              <div><span>CUE RADAR</span><h2>Current-symbol rule engine</h2></div>
+              <div><span>CURRENT SIGNAL</span><h2>Signal engine</h2></div>
               <Badge variant={cueSignal.available ? "success" : "warning"}>
-                {cueSignal.available ? "CUE INTELLIGENCE ACTIVE" : "DATA REQUIRED"}
+                {cueSignal.available ? "SIGNAL ENGINE ACTIVE" : "DATA REQUIRED"}
               </Badge>
             </div>
             {cueSignal.available ? (
@@ -520,299 +617,81 @@ export default function WorkstationPage() {
                 <Radar size={22} />
                 <div>
                   <strong>No fabricated opportunities or scores.</strong>
-                  <p>{"reason" in cueSignal ? cueSignal.reason : "Signal inputs are unavailable."} Cue Hunter scans the broader Webull market; this section evaluates the symbol currently loaded in Cue Vision.</p>
+                  <p>{cueSignal.reason} Market Scanner scans the broader Webull market; this section evaluates the symbol currently loaded on the chart.</p>
                 </div>
               </div>
             )}
           </section>}
 
-          <section className={styles.workGrid} id="vision">
-            <div className={styles.visionCard}>
+          <section className={chartFocus?`${styles.workGrid} ${styles.workGridFocus}`:styles.workGrid} id="vision">
+            <div className={chartFocus?`${styles.visionCard} ${styles.visionCardFocus}`:styles.visionCard}>
               <div className={styles.visionHead}>
                 <div>
                   <small>CUE VISION • REAL MARKET DATA WHEN CONNECTED</small>
                   <strong>{symbol} <span>{formatPrice(latest?.close)}</span></strong>
                 </div>
-                {dataBadge}
+                <div className={styles.visionActions}>
+                  {isMember&&<Button
+                    size="sm"
+                    variant={watchedItem?"secondary":"outline"}
+                    disabled={currentWatchlist.mutate.isPending}
+                    onClick={async()=>{
+                      if(watchedItem){
+                        await currentWatchlist.mutate.mutateAsync({action:"remove",id:watchedItem.id});
+                      }else{
+                        await currentWatchlist.mutate.mutateAsync({action:"add",symbol,assetType:"stocks"});
+                      }
+                    }}
+                  ><Star size={14}/>{watchedItem?"Watching":"Watch"}</Button>}
+                  <Badge variant="outline">{history.isFetching?"LOADING PRO HISTORY…":history.data?history.data.loaded.toLocaleString()+" REAL BARS":"RECENT DATA"}</Badge>
+                  <Button size="sm" variant="outline" onClick={()=>setChartFocus(value=>!value)}>
+                    {chartFocus?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
+                    {chartFocus?"Exit focus":"Focus chart"}
+                  </Button>
+                  {dataBadge}
+                </div>
               </div>
 
               <form className={styles.symbolForm} onSubmit={submitSymbol}>
-                <Input
-                  aria-label="Ticker symbol"
-                  value={symbolDraft}
-                  onChange={(event) => setSymbolDraft(event.target.value.toUpperCase())}
-                  placeholder="Ticker e.g. NVDA"
-                />
+                <div className={styles.symbolSearchWrap}>
+                  <Input
+                    aria-label="Stock ticker or company name"
+                    value={symbolDraft}
+                    onChange={(event) => setSymbolDraft(event.target.value)}
+                    placeholder="Ticker or company, e.g. NVDA or Nvidia"
+                    autoComplete="off"
+                  />
+                  {symbolDraft.trim().length>=2&&symbolDraft.trim().toUpperCase()!==symbol&&<div className={styles.symbolSuggestions}>
+                    {symbolSearch.isFetching&&<span>Searching…</span>}
+                    {symbolSearch.data?.items.map(item=><button type="button" key={item.symbol+"-"+item.exchange} onClick={()=>{setSymbol(item.symbol);setSymbolDraft(item.symbol);}}>
+                      <strong>{item.symbol}</strong><span>{item.name}</span><em>{item.exchange??"US"}</em>
+                    </button>)}
+                    {!symbolSearch.isFetching&&symbolSearch.data&&!symbolSearch.data.items.length&&<span>{symbolSearch.data.note}</span>}
+                  </div>}
+                </div>
                 <Button type="submit">Open chart</Button>
               </form>
 
               <div className={styles.timeframes}>
-                {timeframes.map((tf) => (
-                  <button
-                    key={tf}
-                    className={timeframe === tf ? styles.activeTimeframe : undefined}
-                    onClick={() => setTimeframe(tf)}
-                  >
-                    {tf}
-                  </button>
-                ))}
+                {timeframes.map(tf=><button
+                  key={tf}
+                  className={timeframe===tf?styles.activeTimeframe:undefined}
+                  onClick={()=>setTimeframe(tf)}
+                  type="button"
+                >{tf}</button>)}
+                <span>{timeframe==="5m"?"OMEGA EXECUTION · EMA20 strategy":"LEARNING / CONTEXT ONLY · Omega still executes on 5m"}</span>
               </div>
 
-              {webull.bars.error && <p className={styles.brokerError} role="alert">{webull.bars.error.message}</p>}
-
-              <CueVisionChart
-                symbol={symbol}
-                timeframe={timeframe}
-                bars={webull.bars.data?.bars}
-                dataSource={chartReady ? "webull-paper" : "unavailable"}
-                levels={cueSignal.available && cueSignal.plan && !["STAY_AWAY","DATA_CHECK"].includes(tradeDecision.state) ? cueSignal.plan : null}
-                signalLabel={displayedCue}
-                coachContext={cueSignal.available ? {
-                  score: cueSignal.score,
-                  fresh: dataFresh,
-                  componentScores: cueSignal.componentScores,
-                  relativeVolume: cueSignal.metrics.relativeVolume,
-                  rsi14: cueSignal.metrics.rsi14,
-                  ema9: cueSignal.metrics.ema9,
-                  ema20: cueSignal.metrics.ema20,
-                  atrPercent: cueSignal.metrics.atrPercent,
-                  support20: cueSignal.metrics.support20,
-                  resistance20: cueSignal.metrics.resistance20,
-                } : null}
-                teachingMode={deskMode==="teach"}
-              />
-            </div>
-
-            <div className={styles.decisionCard}>
-              <div className={styles.copilotLabel}><Sparkles size={15}/><span>CUE DECISION</span><small>AI MARKET COPILOT</small></div>
-              <div className={styles.decisionHead}>
-                <div>
-                  <small>{symbol} · {timeframe} · {session.label}</small>
-                  <h2 className={decisionActionClass}>{tradeDecision.headline}</h2>
-                  <span className={styles.actionSub}>{tradeDecision.instruction}</span>
+              {isMember&&<div className={styles.quickTradeBar} aria-label="Webull trade controls">
+                <div className={styles.quickTradeStatus}>
+                  <small>WEBULL PAPERTRADE</small>
+                  <strong>{account?"SYNCED":"CONNECT ACCOUNT"}</strong>
+                  <span>{symbol} · {formatPrice(executionLatest?.close)}</span>
                 </div>
-                <div className={styles.score}><span>Score</span>{cueSignal.available ? cueSignal.score : "—"}</div>
-              </div>
-
-              <div className={styles.truthRail}>
-                <span><b>WEBULL</b>{chartReady ? "CONNECTED" : "OFFLINE"}</span>
-                <span><b>TECH</b>{cueSignal.available ? cueSignal.score + "/100" : "—"}</span>
-                <span><b>MTF</b>{intelligence.data?.alignment ?? "—"}</span>
-                <span><b>FUND</b>{webullFundamentals.data?.score != null ? webullFundamentals.data.bias + " " + webullFundamentals.data.score : webullFundamentals.isFetching ? "LOADING" : "—"}</span>
-                <span><b>NEWS</b>{fundamental.data ? "FMP" : "OFFLINE"}</span>
-              </div>
-
-              {sizing&&cueSignal.available&&cueSignal.plan&&<div className={styles.positionSizing}>
-                <div className={styles.positionSizingHead}><span>Position Sizing</span><small>Based on your Risk Plan</small></div>
-                <div className={styles.sizingFacts}>
-                  <span><b>Available capital</b><strong>{money(account?.balance.buyingPower)}</strong></span>
-                  <span><b>Max risk / trade</b><strong>{money(risk?.maxRiskPerTrade)}</strong></span>
-                  <span><b>Suggested shares</b><strong>{sizing.shares || "—"}</strong></span>
-                </div>
-                <div className={styles.tradePlan}>
-                  <span><b>Entry range</b><strong>{formatPrice(cueSignal.plan.entryLow)} – {formatPrice(cueSignal.plan.entryHigh)}</strong></span>
-                  <span><b>Stop / exit</b><strong className={styles.negative}>{formatPrice(cueSignal.plan.stop)} ({money(String(-sizing.plannedLoss))})</strong></span>
-                  <span><b>Target 1</b><strong className={styles.positive}>{formatPrice(cueSignal.plan.target1)} (+{money(String(sizing.potentialTp1))})</strong></span>
-                  <span><b>Target 2</b><strong className={styles.positive}>{formatPrice(cueSignal.plan.target2)} (+{money(String(sizing.potentialTp2))})</strong></span>
-                </div>
-                <p className={styles.sizingNote}>Potential outcomes only · TradeCUE does not guarantee profit.</p>
+                <button type="button" className={styles.quickBuy} disabled={!account} onClick={()=>openOrderTicket("BUY")}>BUY</button>
+                <button type="button" className={styles.quickSell} disabled={!account||Number(position?.quantity??0)<=0} onClick={()=>openOrderTicket("SELL")}>SELL</button>
+                {assistedLiveTrading&&<button type="button" className={styles.quickLive} onClick={()=>{setDeskView("orders");setTimeout(()=>document.getElementById("webull-live")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}}>LIVE WEBULL</button>}
               </div>}
 
-              {cueSignal.available ? (
-                <>
-                  <CueCheatSheet
-                    symbol={symbol}
-                    timeframe={timeframe}
-                    signal={cueSignal}
-                    action={displayedCue}
-                    fresh={dataFresh}
-                    hasPosition={Boolean(position)}
-                    intelligence={intelligence.data ? {
-                      compositeScore: intelligence.data.compositeScore,
-                      alignment: intelligence.data.alignment,
-                      marketChangePercent: intelligence.data.marketChangePercent,
-                      action: intelligence.data.action,
-                    } : null}
-                    marketActive={session.active}
-                    marketLabel={session.label}
-                  />
-
-                  <details className={styles.advancedDetails}>
-                    <summary>Technical breakdown</summary>
-                    <div className={styles.scoreBreakdown}>
-                      {Object.entries(cueSignal.componentScores).map(([name, value]) => (
-                        <div key={name}>
-                          <small>{name}</small>
-                          <strong>{value}/100</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <ul>
-                      {cueSignal.flags.slice(0, 4).map((flag) => <li key={flag}>{flag}</li>)}
-                    </ul>
-                  </details>
-
-                  <div className={styles.tradeButtons}>
-                    <Button
-                      onClick={() => scrollTo("paper-trading")}
-                      disabled={!account || !dataFresh || ["WAIT","AVOID"].includes(displayedCue ?? "")}
-                    >
-                      {tradeDecision.state==="ENTER_NOW"?"Approve Paper Trade":tradeDecision.state==="EXIT_NOW"||tradeDecision.state==="EXIT_REVIEW"?"Review Exit":position?"Manage Position":"Review Paper Plan"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={watchingCurrent||watchlist.mutate.isPending}
-                      onClick={()=>!watchingCurrent&&watchlist.mutate.mutate({action:"add",symbol,assetType:"stocks"})}
-                    >
-                      {watchingCurrent?"Watching":"Watch This"}
-                    </Button>
-                  </div>
-                  <div className={styles.professorBrief}>
-                    <BookOpen size={17}/>
-                    <p><strong>Professor Cue:</strong> {tradeDecision.instruction}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h3>Signal engine waiting for data</h3>
-                  <p className={styles.decisionCopy}>{"reason" in cueSignal ? cueSignal.reason : "Signal inputs are unavailable."}</p>
-                  <div className={styles.professor}>
-                    <BookOpen size={19} />
-                    <p><strong>Professor Cue:</strong> Connect Webull PaperTrade and load enough candles. TradeCUE will not invent a signal when the required inputs are unavailable.</p>
-                  </div>
-                  <div className={styles.tradeButtons}>
-                    <Button disabled>Signal unavailable</Button>
-                    <Button variant="outline" onClick={() => scrollTo("chart-coach")}>Open chart coach</Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-
-          <Tabs defaultValue="fundamentals" className={styles.lowerTabs}>
-            <TabsList>
-              <TabsTrigger value="fundamentals">Fundamental Intelligence</TabsTrigger>
-              <TabsTrigger value="crypto">CueCrypto</TabsTrigger>
-              <TabsTrigger value="futures">CueFutures</TabsTrigger>
-              <TabsTrigger value="risk">Risk Firewall</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="fundamentals">
-              <div id="fundamentals">
-                {!isMember ? (
-                  <div className={styles.marketDesk}><p>Sign in to load Webull fundamentals and connected news.</p></div>
-                ) : webullFundamentals.isFetching ? (
-                  <div className={styles.marketDesk}><p>Loading Webull fundamentals for {symbol}…</p></div>
-                ) : webullFundamentals.error ? (
-                  <div className={styles.marketDesk}>
-                    <div><Newspaper size={25}/><span><small>WEBULL FUNDAMENTALS</small><strong>DATA UNAVAILABLE</strong></span><Badge variant="warning">CHECK CONNECTION</Badge></div>
-                    <p>{webullFundamentals.error.message}</p>
-                  </div>
-                ) : webullFundamentals.data ? (
-                  <div className={styles.intelligenceGrid}>
-                    <article className={styles.bigPanel}>
-                      <div className={styles.panelHead}>
-                        <div><small>WEBULL FUNDAMENTAL INTELLIGENCE</small><h3>{webullFundamentals.data.profile?.companyName || symbol}</h3></div>
-                        <Badge variant={webullFundamentals.data.bias==="POSITIVE"?"success":webullFundamentals.data.bias==="WEAK"?"destructive":"warning"}>
-                          {webullFundamentals.data.bias} {webullFundamentals.data.score ?? "—"}
-                        </Badge>
-                      </div>
-                      <div className={styles.fundamentalFacts}>
-                        <div><small>Analyst positive</small><strong>{webullFundamentals.data.analyst ? (webullFundamentals.data.analyst.strongBuy + webullFundamentals.data.analyst.buy) + "/" + webullFundamentals.data.analyst.total : "—"}</strong></div>
-                        <div><small>Analyst hold</small><strong>{webullFundamentals.data.analyst?.hold ?? "—"}</strong></div>
-                        <div><small>Mean target</small><strong>{webullFundamentals.data.target?.mean != null ? formatPrice(webullFundamentals.data.target.mean) : "—"}</strong></div>
-                        <div><small>Recent filings</small><strong>{webullFundamentals.data.filings.length}</strong></div>
-                      </div>
-                      <div className={styles.fundamentalReasons}>
-                        {webullFundamentals.data.reasons.map(reason=><span key={reason}>{reason}</span>)}
-                      </div>
-                      {webullFundamentals.data.earnings[0] && (
-                        <div className={styles.earningsStrip}>
-                          <span><b>Latest reported EPS</b>{webullFundamentals.data.earnings[0].epsActual ?? "—"} vs {webullFundamentals.data.earnings[0].epsEstimate ?? "—"} est.</span>
-                          <span><b>Revenue</b>{webullFundamentals.data.earnings[0].revenueActual != null ? compactMoney(webullFundamentals.data.earnings[0].revenueActual) : "—"}</span>
-                          <span><b>Sector / industry</b>{webullFundamentals.data.profile?.sector ?? "—"}</span>
-                        </div>
-                      )}
-                      <div className={styles.deepFundamentals}>
-                        <span><b>Large-order flow</b><strong className={(webullFundamentals.data.capitalFlow?.largeNet??0)>=0?styles.positive:styles.negative}>{compactMoney(webullFundamentals.data.capitalFlow?.largeNet)}</strong><small>{webullFundamentals.data.capitalFlow?.date ?? "—"}</small></span>
-                        <span><b>Net margin</b><strong>{metricPercent(webullFundamentals.data.indicators?.netMargin)}</strong><small>Latest Webull indicator</small></span>
-                        <span><b>ROE</b><strong>{metricPercent(webullFundamentals.data.indicators?.roe)}</strong><small>Return on equity</small></span>
-                        <span><b>Debt / assets</b><strong>{metricPercent(webullFundamentals.data.indicators?.debtToAssets)}</strong><small>Latest reported period</small></span>
-                        <span><b>Next earnings</b><strong>{webullFundamentals.data.nextEarnings?.startDate ?? "—"}</strong><small>EPS est. {webullFundamentals.data.nextEarnings?.epsEstimate ?? "—"}</small></span>
-                        <span><b>OCF / share</b><strong>{webullFundamentals.data.indicators?.operatingCashFlowPerShare?.toFixed(2) ?? "—"}</strong><small>Operating cash flow</small></span>
-                      </div>
-                      <p><strong>Professor Cue:</strong> Fundamentals are context, not an automatic entry. A strong company can still be a bad buy if price is extended or the technical setup is weak.</p>
-                    </article>
-
-                    <article className={styles.newsList}>
-                      <div className={styles.newsHead}><h3>Fundamental news</h3><Badge variant={fundamental.data?"success":"warning"}>{fundamental.data?"FMP LIVE":"NEWS OFFLINE"}</Badge></div>
-                      {fundamental.data ? (
-                        <>
-                          {fundamental.data.news.slice(0,4).map((item,index)=>(
-                            <div key={(item.url||item.title)+index}>
-                              <span>{item.site||"Market"}</span>
-                              <strong>{item.title}</strong>
-                              <em>{item.publishedDate?new Date(item.publishedDate).toLocaleDateString():"Update"}</em>
-                            </div>
-                          ))}
-                          <p><strong>AI catalyst read:</strong> {fundamental.data.cueSummary}</p>
-                        </>
-                      ) : (
-                        <p>Webull fundamentals are live. The external headline/catalyst feed is not connected yet, so TradeCUE will not invent news. Connect the FMP API key to turn this panel on.</p>
-                      )}
-                      {webullFundamentals.data.filings.slice(0,3).map((filing,index)=>(
-                        <div key={filing.title+index}>
-                          <span>SEC</span><strong>{filing.title}</strong><em>{filing.publishDate??"Filing"}</em>
-                        </div>
-                      ))}
-                    </article>
-                  </div>
-                ) : null}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="crypto">
-              <div className={styles.marketDesk}>
-                <div><Link2 size={25} /><span><small>CUECRYPTO</small><strong>CONNECTION REQUIRED</strong></span><Badge variant="warning">NOT ACTIVE</Badge></div>
-                <p>No crypto price, signal, or portfolio data is being simulated. A supported crypto data/broker connection must be added first.</p>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="futures">
-              <div className={styles.marketDesk}>
-                <div><Link2 size={25} /><span><small>CUEFUTURES</small><strong>TRADOVATE CONNECTION REQUIRED</strong></span><Badge variant="warning">NOT ACTIVE</Badge></div>
-                <p>Futures market data, DOM, margin, and order controls remain disabled until Tradovate credentials and permissions are connected.</p>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="risk">
-              <div id="risk">
-                <div className={styles.riskDesk}>
-                  <div><small>Max risk / trade</small><strong>{risk ? money(risk.maxRiskPerTrade) : "—"}</strong></div>
-                  <div><small>Max daily loss</small><strong>{risk ? money(risk.maxDailyLoss) : "—"}</strong></div>
-                  <div><small>Max trades</small><strong>{risk?.maxTradesPerDay ?? "—"}</strong></div>
-                  <div><small>Long only</small><strong className={risk?.longOnly ? styles.positive : undefined}>{risk ? risk.longOnly ? "ON" : "OFF" : "—"}</strong></div>
-                  <div><small>No chase</small><strong className={risk?.noChaseEnabled ? styles.positive : undefined}>{risk ? risk.noChaseEnabled ? "ON" : "OFF" : "—"}</strong></div>
-                  <div><small>Day-trade flat time</small><strong>{risk?.dayTradeFlatTimePt ?? "—"}</strong></div>
-                </div>
-                <TradePlanner
-                  accountEquity={account?.balance.equity}
-                  entry={latest?.close}
-                  suggestedStop={cueSignal.available && dataFresh && ["BUY","HOLD"].includes(displayedCue ?? "") ? cueSignal.plan?.stop : undefined}
-                  suggestedTarget={cueSignal.available && dataFresh && ["BUY","HOLD"].includes(displayedCue ?? "") ? cueSignal.plan?.target2 : undefined}
-                  maxRiskPerTrade={risk?.maxRiskPerTrade}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <section className={styles.automationCard}>
-            <div><Gauge size={20} /><span><small>CUE AUTOPILOT</small><strong>MANUAL PAPER MODE ACTIVE</strong></span></div>
-            <div className={styles.automationStats}><span>Webull paper orders enabled</span><span>No autonomous live trading</span><span>Risk review required</span></div>
-            <Button variant="outline" disabled>Autopilot strategy runner coming later</Button>
-          </section>
-        </main>
-      </div>
-    </div>
-  );
-}
+              {webull.bars.error && <p className={styles.brokerError} rol
+... (output capped at 40000 chars — re-read with offset/limit)

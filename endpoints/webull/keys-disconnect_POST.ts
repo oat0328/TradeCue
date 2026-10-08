@@ -1,3 +1,2 @@
 import {apiUser,apiJson,apiFailure} from "../../helpers/apiAccess";import {db} from "../../helpers/db";
 export async function handle(request:Request){try{const u=await apiUser(request);await db.transaction().execute(async t=>{await t.deleteFrom("webullCredentials").where("userId","=",u.id).execute();await t.insertInto("cueAuditLog").values({userId:u.id,action:"webull_paper_keys_removed",entityType:"broker_connection"}).execute();});return apiJson({disconnected:true});}catch(e){return apiFailure(e);}}
-

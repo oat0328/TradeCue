@@ -19,7 +19,7 @@ export async function handle(request:Request){
         timespan:intervals[input.timeframe],
         count:"480",
         real_time_required:true,
-        trading_sessions:"PRE,RTH,ATH",
+        trading_sessions:"OVN,PRE,RTH,ATH",
       },
     );
     return apiJson({
@@ -33,4 +33,3 @@ export async function handle(request:Request){
     return apiFailure(error);
   }
 }
-

@@ -6,9 +6,9 @@ export function useMarketIntelligence(enabled:boolean,symbol:string){
     queryFn:()=>getMarketIntelligence(symbol),
     enabled,
     retry:false,
-    staleTime:30_000,
-    refetchInterval:60_000,
+    staleTime:90_000,
+    refetchInterval:120_000,
     refetchIntervalInBackground:true,
   });
 }
-
+   14
