@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/_api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/premarket",
+      "schedule": "0 13,14 * * 1-5"
+    },
+    {
+      "path": "/api/cron/open-cleanup",
+      "schedule": "31 13,14 * * 1-5"
+    },
+    {
+      "path": "/api/cron/postmarket",
+      "schedule": "15 20,21 * * 1-5"
+    },
+    {
+      "path": "/api/cron/weekend",
+      "schedule": "0 0 * * 1"
+    }
+  ]
+}
