@@ -1,0 +1,1 @@
+import {cuePremarket} from "../../helpers/cuePremarket";import {allowed,cronResponse} from "./_guard";export default async function(req:any,res:any){if(!allowed(req))return cronResponse(res,401,{error:"unauthorized"});await cuePremarket();return cronResponse(res,200,{ok:true,job:"premarket"});}
