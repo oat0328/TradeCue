@@ -879,5 +879,129 @@ export default function CueVisionChart({
             <text
               x={left + plotWidth}
               y={height - 15}
- 
-... (output capped at 40000 chars — re-read with offset/limit)
+              textAnchor="end"
+              className={styles.axis}
+            >
+              {formatTime(raw[raw.length - 1].time)}
+            </text>
+          </svg>
+
+          <div className={styles.inspect} aria-live="polite">
+            <strong>{formatTime(candle?.time)}</strong>
+            <span>Open {format(candle?.open)}</span>
+            <span>High {format(candle?.high)}</span>
+            <span>Low {format(candle?.low)}</span>
+            <span>Close {format(candle?.close)}</span>
+            <span>Volume {(candle?.volume || 0).toLocaleString()}</span>
+          </div>
+          <div className={styles.indicatorReadouts}>
+            {indicators.has("RSI") && <span>RSI(14) <strong>{format(latestIndicatorValue(visibleSeries.rsi14) ?? undefined)}</strong></span>}
+            {indicators.has("MACD") && <span>MACD <strong>{format(latestIndicatorValue(visibleSeries.macd) ?? undefined)}</strong> / Signal <strong>{format(latestIndicatorValue(visibleSeries.macdSignal) ?? undefined)}</strong></span>}
+            {indicators.has("ATR") && <span>ATR(14) <strong>{format(latestIndicatorValue(visibleSeries.atr14) ?? undefined)}</strong></span>}
+          </div>
+          <p className={styles.hint}>
+            {raw.length} of {all.length} candles · Drag to pan. Point at a candle
+            or use arrow keys to inspect. Latest loaded bar:{" "}
+            {formatTime(all[all.length - 1]?.time)}.{" "}
+            {style === "heikin" ? "Heikin-Ashi prices are synthetic." : ""}
+          </p>
+        </>
+      )}
+
+      <section className={styles.coach}>
+        <div className={styles.coachHead}>
+          <div>
+            <small>PROFESSOR CUE • {teachingMode ? "TEACHING MODE" : "PRO MODE"} • CURRENT WEBULL CHART</small>
+            <h3>{symbol} · {timeframe} · {signalLabel ?? "DATA CHECK"}</h3>
+          </div>
+          <span>{coachContext?.fresh ? "Fresh bars" : "Market/data not fresh"}</span>
+        </div>
+
+        <div className={styles.chartReadStrip}>
+          <span><b>Heikin read</b><strong>{haConviction}</strong></span>
+          <span><b>Body</b><strong>{haBodyRead}</strong></span>
+          <span><b>Wicks</b><strong>{haWickRead}</strong></span>
+          <span><b>Support</b><strong>{format(coachContext?.support20)}</strong></span>
+          <span><b>Resistance</b><strong>{format(coachContext?.resistance20)}</strong></span>
+          <span><b>Pre H/L</b><strong>{premarketRange ? format(premarketRange.high)+" / "+format(premarketRange.low) : "—"}</strong></span>
+        </div>
+
+        {coachContext && (
+          <>
+            <div className={styles.coachChecks}>
+              {[
+                ["Trend", coachContext.componentScores.trend, coachContext.componentScores.trend >= 65],
+                ["Momentum", coachContext.componentScores.momentum, coachContext.componentScores.momentum >= 60],
+                ["Volume", coachContext.componentScores.volume, coachContext.componentScores.volume >= 50],
+                ["Setup", coachContext.componentScores.setup, coachContext.componentScores.setup >= 65],
+                ["Data", coachContext.fresh ? 100 : 0, coachContext.fresh],
+              ].map(([label,value,pass]) => (
+                <span key={String(label)} className={pass ? styles.coachPass : styles.coachFail}>
+                  <b>{String(label)}</b>
+                  <strong>{label === "Data" ? (pass ? "LIVE" : "STALE") : String(value)+"/100"}</strong>
+                </span>
+              ))}
+            </div>
+            <p className={styles.currentRead}>
+              <strong>What TradeCUE sees:</strong>{" "}
+              Price {format(candle?.close)} · EMA9 {format(coachContext.ema9)} · EMA20 {format(coachContext.ema20)} · RSI {coachContext.rsi14.toFixed(1)} · RVOL {coachContext.relativeVolume.toFixed(2)}× · ATR {coachContext.atrPercent.toFixed(2)}%.
+            </p>
+            <p className={styles.actionRead}>
+              <strong>{signalLabel === "BUY" ? "BUY CHECK:" : signalLabel === "SELL" ? "EXIT CHECK:" : signalLabel === "AVOID" ? "STAY AWAY:" : signalLabel === "HOLD" ? "HOLD CHECK:" : "WAIT CHECK:"}</strong>{" "}
+              {signalLabel === "BUY"
+                ? "Fresh data and the core technical checks are aligned. Use the plotted entry zone, stop and target—not the Heikin-Ashi synthetic price—as the paper-trade plan."
+                : signalLabel === "SELL"
+                  ? "The open position has weakened into TradeCUE's exit-review conditions. Compare current price with the plotted stop and support before acting."
+                  : signalLabel === "AVOID"
+                    ? "Stay away for now. Trend or setup conditions are weak enough that TradeCUE does not want a new long entry."
+                    : signalLabel === "HOLD"
+                      ? "The setup is still constructive. Watch support, the stop line and whether Heikin-Ashi momentum starts losing body size."
+                      : "No entry yet. The chart is missing confirmation, is extended, or the data/session is not fresh enough."}
+            </p>
+          </>
+        )}
+
+        {teachingMode && (
+          <>
+            <div className={styles.candleTutor}>
+              <div><b>BODY COLOR</b><span>Green = bullish pressure; red = bearish pressure on the Heikin-Ashi view.</span></div>
+              <div><b>BODY SIZE</b><span>Large body = stronger momentum. Shrinking bodies = momentum may be fading.</span></div>
+              <div><b>WICKS</b><span>Long wicks show rejection/pushback. Two long wicks + small body = indecision watch.</span></div>
+              <div><b>NO WICK</b><span>Little/no lower wick on green or upper wick on red can indicate stronger directional control.</span></div>
+            </div>
+
+            <details className={styles.learnDetails}>
+              <summary>Learn indicators & chart tools</summary>
+              <div className={styles.group}>
+                {(Object.keys(lessons) as (keyof typeof lessons)[]).map((key) => (
+                  <Button
+                    size="sm"
+                    key={key}
+                    variant={lesson === key ? "secondary" : "ghost"}
+                    onClick={() => setLesson(key)}
+                  >
+                    {key === "heikin"
+                      ? "Heikin-Ashi"
+                      : key === "vwap"
+                        ? "VWAP"
+                        : key.charAt(0).toUpperCase() + key.slice(1)}
+                  </Button>
+                ))}
+              </div>
+              <h4>{lessons[lesson].title}</h4>
+              <p>{lessons[lesson].text}</p>
+              {candle && (
+                <p className={styles.reading}>
+                  <strong>Selected raw candle:</strong>{" "}
+                  {candle.close >= candle.open ? "closed above" : "closed below"} its open by {format(Math.abs(candle.close - candle.open))}; range {format(candle.high - candle.low)}.
+                  {vwap !== null ? " Close is " + (candle.close >= vwap ? "above" : "below") + " visible-range VWAP." : ""}
+                </p>
+              )}
+            </details>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+

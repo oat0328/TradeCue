@@ -1,0 +1,25 @@
+name: Omega Forecast Service QA
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  model-service-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install base research API and tests only
+        run: |
+          python -m pip install -r services/omega_forecasting/requirements.txt
+          python -m pip install pytest
+      - name: Check Python source and service guardrails
+        run: |
+          python -m compileall -q services/omega_forecasting
+          python -m pytest -q services/omega_forecasting/test_app.py
