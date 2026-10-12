@@ -12,9 +12,18 @@ export type CandlePressure={
   lowerWickRatio:number;
 };
 
+export type CueTradePlan = {
+  entryLow:number;
+  entryHigh:number;
+  stop:number;
+  target1:number;
+  target2:number;
+  target3:number;
+};
+
 export type CueSignal = {
   available: true;
-  version: "technical-v0.1";
+  version: "technical-v0.2";
   state: CueSignalState;
   setupStage: "PRICE_ACTION_BEARISH"|"PRICE_ACTION_NOT_BULLISH"|"BELOW_EMA20"|"EMA20_NOT_RISING"|"VWAP_UNAVAILABLE"|"BELOW_VWAP"|"VOLUME_NOT_RISING"|"WAIT_PULLBACK"|"WAIT_GREEN"|"TOO_EXTENDED"|"TARGET_UNREALISTIC"|"ENTRY_READY";
   score: number;
@@ -57,14 +66,8 @@ export type CueSignal = {
     priceActionTrend: "BULLISH"|"BEARISH"|"RANGE";
     priceActionPattern: string;
   };
-  plan: {
-    entryLow: number;
-    entryHigh: number;
-    stop: number;
-    target1: number;
-    target2: number;
-    target3: number;
-  } | null;
+  plan: CueTradePlan | null;
+  watchPlan: CueTradePlan | null;
   flags: string[];
   explanation: string[];
 };
@@ -299,14 +302,28 @@ export function calculateCueSignal(input:WebullBar[],options:CueSignalOptions={}
   if(rsiValue>70)flags.push("RSI elevated");
   if(rsiValue<40)flags.push("Momentum weak");
 
-  const plan=riskDistance>0&&targetRealistic&&setupStage==="ENTRY_READY"?{
-    entryLow:round(entryLow),
-    entryHigh:round(entryHigh),
-    stop:round(stop),
-    target1:round(entryHigh+riskDistance),
-    target2:round(entryHigh+riskDistance*protectedTargetR),
-    target3:round(entryHigh+riskDistance*3),
-  }:null;
+  // A watch plan gives the trader exact chart-derived levels before the entry
+  // trigger fires, but only after the trend, EMA20, VWAP and pullback geometry
+  // are valid. It is intentionally non-actionable until ENTRY_READY.
+  const watchPlan:CueTradePlan|null=
+    riskDistance>0&&
+    bullishPriceAction&&
+    aboveEma20&&
+    ema20Rising&&
+    vwapValue!=null&&
+    aboveVwap&&
+    pullback&&
+    !extended
+      ?{
+        entryLow:round(entryLow),
+        entryHigh:round(entryHigh),
+        stop:round(stop),
+        target1:round(entryHigh+riskDistance),
+        target2:round(entryHigh+riskDistance*protectedTargetR),
+        target3:round(entryHigh+riskDistance*3),
+      }
+      :null;
+  const plan=setupStage==="ENTRY_READY"?watchPlan:null;
 
   const explanation=[
     `Price action is ${structure.trend.toLowerCase()} (${structure.pattern}); A+ longs require a bullish higher-high + higher-low structure.`,
@@ -316,12 +333,14 @@ export function calculateCueSignal(input:WebullBar[],options:CueSignalOptions={}
     pullback?`A recent candle pulled back into the EMA 20 area; pullback low is ${round(pullbackLow)}.`:"No valid pullback into the EMA 20 area has formed yet.",
     greenConfirmation?`The last completed candle is green and closed back above the prior close and EMA 20.`:"A completed green confirmation candle has not appeared yet.",
     `Relative volume is ${round(relativeVolume,2)}× the recent completed-bar average; volume is context, not the trigger.`,
-    plan?`Risk is defined from entry ${round(entryHigh)} to stop ${round(stop)}, with targets at 1R, ${protectedTargetR}R protected and 3R extended.`:"A complete stop/target plan is not available yet.",
+    plan?`ENTRY READY: risk is defined from entry ${round(entryHigh)} to stop ${round(stop)}, with targets at 1R, ${protectedTargetR}R protected and 3R extended.`:
+      watchPlan?`WATCH PLAN: trigger ${round(entryHigh)}, stop ${round(stop)}, targets ${round(watchPlan.target1)} / ${round(watchPlan.target2)} / ${round(watchPlan.target3)}. Wait for all entry gates before acting.`:
+      "A complete stop/target plan is not available yet.",
   ];
 
   return {
     available:true,
-    version:"technical-v0.1",
+    version:"technical-v0.2",
     state,
     setupStage,
     score,
@@ -359,7 +378,9 @@ export function calculateCueSignal(input:WebullBar[],options:CueSignalOptions={}
       priceActionPattern:structure.pattern,
     },
     plan,
+    watchPlan,
     flags,
     explanation,
   };
 }
+  386
