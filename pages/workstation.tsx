@@ -46,6 +46,7 @@ import {OmegaProofPanel} from "../components/OmegaProofPanel";
 import { BuildUpdateGuard } from "../components/BuildUpdateGuard";
 import { PortfolioBrainPanel } from "../components/PortfolioBrainPanel";
 import { OmegaGeniusPanel } from "../components/OmegaGeniusPanel";
+import { OmegaForecastPanel } from "../components/OmegaForecastPanel";
 import { CueLearningPanel } from "../components/CueLearningPanel";
 import { ReliabilityCenter } from "../components/ReliabilityCenter";
 import { CueNewsCommandCenter } from "../components/CueNewsCommandCenter";
@@ -625,6 +626,7 @@ export default function WorkstationPage() {
             )}
           </section>}
 
+          {isMember&&<OmegaForecastPanel symbol={symbol} enabled={deskView==="axiom"||deskView==="advanced"}/>}
           {isMember&&<OmegaGeniusPanel symbol={symbol} report={reviewOmegaStockSetup({
             signal:cueSignal,
             currentPrice:executionLatest?.close??null,
