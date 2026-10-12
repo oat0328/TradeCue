@@ -48,6 +48,15 @@ export function OmegaForecastPanel({symbol,enabled}:{symbol:string;enabled:boole
             {model==="baseline"&&<span>Historical held-out range coverage: {row.intervalCoverage==null?"—":row.intervalCoverage.toFixed(0)+"%"} ({row.testSamples} samples)</span>}
           </div>)}
         </div>
+        {result.intermarket.length>0&&<div className={styles.comparison}>
+          <strong>Cross-market context · synchronized 5m returns</strong>
+          <table><thead><tr><th>Peer</th><th>Correlation</th><th>Matched</th><th>Context</th></tr></thead><tbody>
+            {result.intermarket.map(peer=><tr key={peer.peer}><td>{peer.peer}</td>
+              <td>{peer.correlation==null?"—":peer.correlation.toFixed(2)}</td>
+              <td>{peer.matchedReturns}</td><td>{peer.context.replace(/_/g," ")}</td></tr>)}
+          </tbody></table>
+          <p>Contemporaneous correlation is descriptive, not proof of predictive direction or causality.</p>
+        </div>}
         {model==="baseline"?<div className={styles.comparison}>
           <strong>Out-of-sample baseline comparison</strong>
           <table><thead><tr><th>Model</th><th>MAE</th><th>Direction hit rate</th></tr></thead><tbody>
