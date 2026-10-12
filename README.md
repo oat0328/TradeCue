@@ -57,3 +57,18 @@ Validated against the connected Webull PaperTrade/OpenAPI sandbox on 2026-10-03:
 - TradeCUE technical scores are computed locally from Webull candles; they are not broker-supplied win probabilities.
 - Heikin-Ashi, EMA/RSI/ATR, support/resistance, session ranges, entry/stop/target overlays, and CUE states are derived analytics built from the underlying Webull data.
 - Financial Modeling Prep news is not connected until FMP_API_KEY is configured.
+
+## Omega Predictive Brain (new research package)
+
+The feature branch includes a read-only prediction laboratory in the workstation: choose **Omega → Chronos-2, Kronos, NeuralForecast/NHITS, or Baseline Lab**. The baseline lab calculates walk-forward next-1/3/12-bar price estimates, interval coverage, next-bar directional hit rates, and synchronized SPY/QQQ correlation from available broker candles.
+
+- `helpers/omegaForecastResearch.tsx` — transparent non-AI baselines with historical holdout comparisons.
+- `helpers/omegaIntermarket.tsx` — contemporaneous cross-market context (not causality).
+- `endpoints/forecast/research_GET.ts` — authenticated Webull research endpoint, optional authenticated Python inference.
+- `components/OmegaForecastPanel.tsx` — real research readout and explicit model readiness.
+- `services/omega_forecasting/` — isolated optional adapters for Chronos-2, Kronos and NHITS. See its README for model installation, privacy and infrastructure requirements.
+- `helpers/omegaGenius.tsx` — read-only multi-timeframe 20-EMA risk review.
+
+**Status:** The baseline uses real candles only when Webull can authenticate and supply data. External AI model weights are not installed/deployed by committing code; missing integrations show unavailable. No synthetic prediction, win rate or broker order is produced. All universal-market live execution remains disabled. Model output must pass out-of-sample validation and independent risk checks before it could inform even a paper-order decision.
+
+**Deployment note:** The existing Floot-specific source repository is not a ready-to-deploy standalone Vite application; an external Vercel setup needs a complete frontend/backend build, a production API runtime, database wiring and its own validation. Do not assume Vercel previews are production-ready merely because GitHub pushes trigger them.
