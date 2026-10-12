@@ -1,0 +1,27 @@
+.card{margin-top:.8rem;padding:.9rem 1rem;border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border));border-radius:var(--radius-md);background:linear-gradient(130deg,color-mix(in srgb,var(--primary) 5%,var(--card)),var(--card));box-shadow:var(--shadow)}
+.header,.title{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
+.header{justify-content:space-between}
+.title{color:var(--primary)}
+.title>div{display:grid;gap:.16rem}
+.title small{font:700 .6rem/1.3 var(--font-family-monospace);letter-spacing:.09em}
+.title strong{color:var(--foreground);font:750 .95rem/1.3 var(--font-family-display)}
+.models{display:flex;gap:.4rem;margin:.65rem 0;flex-wrap:wrap}
+.models button{border:1px solid var(--border);color:var(--muted-foreground);border-radius:.45rem;background:var(--background);padding:.55rem .6rem;font-weight:700;font-size:.7rem;cursor:pointer}
+.models button.selected{color:var(--primary);border-color:var(--primary);background:color-mix(in srgb,var(--primary) 9%,var(--card))}
+.note{display:flex;align-items:flex-start;gap:.4rem;color:var(--muted-foreground);font-size:.7rem;line-height:1.5;margin:.7rem 0}
+.error{color:var(--warning);font-size:.74rem;line-height:1.5}
+.summary,.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin:.65rem 0}
+.summary>div,.prediction{display:flex;flex-direction:column;gap:.28rem;min-width:0;padding:.65rem;background:var(--background);border-radius:.5rem;border:1px solid var(--border)}
+.summary small,.prediction small{font-size:.61rem;color:var(--muted-foreground)}
+.summary strong{font-size:.76rem;overflow-wrap:anywhere}
+.prediction strong{font:800 .95rem/1 var(--font-family-monospace)}
+.prediction span{font-size:.67rem;color:var(--muted-foreground);line-height:1.5}
+.comparison{margin:.65rem 0;padding:.6rem;border:1px solid var(--border);border-radius:.5rem}
+.comparison strong{font-size:.73rem}
+.comparison table{width:100%;border-collapse:collapse;font-size:.67rem;margin:.45rem 0}
+.comparison th,.comparison td{padding:.45rem;border-bottom:1px solid var(--border);text-align:left}
+.comparison th{color:var(--muted-foreground)}
+.comparison p{font-size:.62rem;color:var(--muted-foreground);line-height:1.5}
+.warning{display:flex;align-items:flex-start;gap:.45rem;color:var(--warning);padding:.5rem;border-top:1px solid var(--border);font-size:.67rem;line-height:1.45}
+.warning svg{flex:0 0 auto}
+@media(max-width:700px){.summary,.grid{grid-template-columns:1fr}}
