@@ -42,6 +42,8 @@ import { MarketPulsePanel } from "../components/MarketPulsePanel";
 import { PositionMonitorPanel } from "../components/PositionMonitorPanel";
 import { CueCheatSheet } from "../components/CueCheatSheet";
 import { ProfessorCueLive } from "../components/ProfessorCueLive";
+import { CueSignalCard } from "../components/CueSignalCard";
+import { CueTradeAlertFeed } from "../components/CueTradeAlertFeed";
 import {OmegaProofPanel} from "../components/OmegaProofPanel";
 import { BuildUpdateGuard } from "../components/BuildUpdateGuard";
 import { PortfolioBrainPanel } from "../components/PortfolioBrainPanel";
@@ -140,6 +142,7 @@ export default function WorkstationPage() {
   const [symbolDraft, setSymbolDraft] = useState("NVDA");
   const [timeframe, setTimeframe] = useState<(typeof timeframes)[number]>("5m");
   const [setupEngine,setSetupEngine]=useState<"ema20"|"precision">("ema20");
+  const [targetMode,setTargetMode]=useState<"standard"|"crawl">("standard");
   const [accountId, setAccountId] = useState<string>();
   const [deskMode, setDeskMode] = useState<"teach"|"pro">("pro");
   const [chartFocus, setChartFocus] = useState(false);
@@ -685,9 +688,5 @@ export default function WorkstationPage() {
             <div className={styles.sectionTitle}>
               <div><span>CURRENT SIGNAL</span><h2>Signal engine</h2></div>
               <Badge variant={cueSignal.available ? "success" : "warning"}>
-                {cueSignal.available ? "SIGNAL ENGINE ACTIVE" : "DATA REQUIRED"}
-              </Badge>
-            </div>
-            {cueSignal.available ? (
-              <div className={styles.currentSi
+     
 ... (output capped at 40000 chars — re-read with offset/limit)
