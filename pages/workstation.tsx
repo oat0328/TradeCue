@@ -62,6 +62,7 @@ import {useChartTrades} from "../helpers/useChartTrades";
 import {chartFrameSeconds} from "../helpers/chartTradeFills";
 import { useMacroRisk } from "../helpers/useMacroRisk";
 import { calculateCueSignal } from "../helpers/cueSignal";
+import { calculatePrecisionStructureSignal } from "../helpers/precisionStructure";
 import { calculateMarketStructure } from "../helpers/marketStructure";
 import { positionCommander } from "../helpers/positionCommander";
 import { TRADECUE_BUILD_ID } from "../helpers/buildVersion";
@@ -138,6 +139,7 @@ export default function WorkstationPage() {
   const [symbol, setSymbol] = useState("NVDA");
   const [symbolDraft, setSymbolDraft] = useState("NVDA");
   const [timeframe, setTimeframe] = useState<(typeof timeframes)[number]>("5m");
+  const [setupEngine,setSetupEngine]=useState<"ema20"|"precision">("ema20");
   const [accountId, setAccountId] = useState<string>();
   const [deskMode, setDeskMode] = useState<"teach"|"pro">("pro");
   const [chartFocus, setChartFocus] = useState(false);
@@ -187,6 +189,10 @@ export default function WorkstationPage() {
   const chartReady = bars.length > 0;
   const cueSignal = useMemo(() => calculateCueSignal(executionBars), [executionBars]);
   const chartSignal = useMemo(() => calculateCueSignal(bars), [bars]);
+  const precisionSignal = useMemo(()=>calculatePrecisionStructureSignal(executionBars),[executionBars]);
+  const precisionChartSignal = useMemo(()=>calculatePrecisionStructureSignal(bars),[bars]);
+  const selectedSignal=setupEngine==="precision"?precisionSignal:cueSignal;
+  const selectedChartSignal=setupEngine==="precision"?precisionChartSignal:chartSignal;
   const structure = useMemo(()=>calculateMarketStructure(bars),[bars]);
   const executionStructure = useMemo(()=>calculateMarketStructure(executionBars),[executionBars]);
   const freshnessMinutes: Record<(typeof timeframes)[number], number> = {
@@ -215,14 +221,16 @@ export default function WorkstationPage() {
   const position = account?.positions.find(
     (item) => item.symbol.toUpperCase() === symbol.toUpperCase() && Number(item.quantity ?? 0) > 0,
   );
-  const displayedCue = cueSignal.available
+  const externalAvoid=setupEngine==="ema20"&&intelligence.data?.action==="AVOID";
+  const externalEntryReady=setupEngine==="precision"||(intelligence.data?intelligence.data.action==="ENTRY_READY":true);
+  const displayedCue = selectedSignal.available
     ? !executionDataFresh
       ? "WAIT"
       : position
-        ? (cueSignal.state === "AVOID" || intelligence.data?.action === "AVOID") ? "SELL" : "HOLD"
-        : (cueSignal.state === "AVOID" || intelligence.data?.action === "AVOID")
+        ? (selectedSignal.state === "AVOID" || externalAvoid) ? "SELL" : "HOLD"
+        : (selectedSignal.state === "AVOID" || externalAvoid)
           ? "AVOID"
-          : cueSignal.state === "BUY" && macroRisk.data?.state !== "BLOCKED" && (intelligence.data ? intelligence.data.action === "ENTRY_READY" : true)
+          : selectedSignal.state === "BUY" && macroRisk.data?.state !== "BLOCKED" && externalEntryReady
             ? "BUY"
             : "WAIT"
     : null;
@@ -291,8 +299,8 @@ export default function WorkstationPage() {
 
   const latestEarnings = fundamental.data?.earnings?.[0];
   const tradeAmount=Math.max(0,Number(tradeAmountText)||0);
-  const activePlan=cueSignal.available?cueSignal.plan:null;
-  const watchPlan=cueSignal.available?cueSignal.watchPlan:null;
+  const activePlan=selectedSignal.available?selectedSignal.plan:null;
+  const watchPlan=selectedSignal.available?selectedSignal.watchPlan:null;
   const protectedTrade=journal.activity.data?.trades.find(row=>
     row.symbol.toUpperCase()===symbol.toUpperCase()&&
     row.exitTime==null&&
@@ -307,7 +315,7 @@ export default function WorkstationPage() {
     target3:protectedTrade.target3!,
   }:null;
   const decisionLevels=protectedLevels??activePlan??watchPlan;
-  const protectedR=cueSignal.available?cueSignal.metrics.protectedTargetR:2;
+  const protectedR=setupEngine==="ema20"&&cueSignal.available?cueSignal.metrics.protectedTargetR:2;
   const planEntry=activePlan?activePlan.entryHigh:null;
   const planShares=planEntry&&tradeAmount>0?Math.floor(tradeAmount/planEntry):0;
   const planRisk=activePlan&&planShares>0?(activePlan.entryHigh-activePlan.stop)*planShares:null;
@@ -323,29 +331,29 @@ export default function WorkstationPage() {
   const buyingPowerShares=decisionLevels&&decisionLevels.entryHigh>0
     ?Math.floor(availableBuyingPower/decisionLevels.entryHigh):0;
   const decisionShares=decisionLevels?Math.max(0,Math.min(200,riskSizedShares,buyingPowerShares)):0;
-  const setupGrade=!cueSignal.available?"—":
-    cueSignal.score>=90?"A+":
-    cueSignal.score>=85?"A":
-    cueSignal.score>=80?"A-":
-    cueSignal.score>=75?"B+":
-    cueSignal.score>=70?"B":
-    cueSignal.score>=60?"C":"D";
+  const setupGrade=!selectedSignal.available?"—":
+    selectedSignal.score>=90?"A+":
+    selectedSignal.score>=85?"A":
+    selectedSignal.score>=80?"A-":
+    selectedSignal.score>=75?"B+":
+    selectedSignal.score>=70?"B":
+    selectedSignal.score>=60?"C":"D";
 
   const protectedRiskPerShare=protectedLevels?protectedLevels.entryHigh-protectedLevels.stop:0;
   const currentR=protectedLevels&&protectedRiskPerShare>0&&executionLatest?.close!=null
     ?(executionLatest.close-protectedLevels.entryHigh)/protectedRiskPerShare:null;
-  const managementRead=position&&protectedLevels&&cueSignal.available
+  const managementRead=position&&protectedLevels&&selectedSignal.available
     ?positionCommander({
       fresh:executionDataFresh,
       forceFlat:false,
       stopHit:executionLatest?.close!=null&&executionLatest.close<=protectedLevels.stop,
       targetHit:executionLatest?.close!=null&&executionLatest.close>=protectedLevels.target2,
       currentR,
-      technicalState:cueSignal.state,
+      technicalState:selectedSignal.state,
       structureTrend:executionStructure.trend,
       latestStructureEvent:executionStructure.latestEvent?.kind??null,
-      aboveEma20:cueSignal.metrics.aboveEma20,
-      aboveVwap:cueSignal.metrics.aboveVwap,
+      aboveEma20:setupEngine==="ema20"&&cueSignal.available?cueSignal.metrics.aboveEma20:null,
+      aboveVwap:setupEngine==="ema20"&&cueSignal.available?cueSignal.metrics.aboveVwap:null,
       entryPrice:protectedLevels.entryHigh,
     })
     :null;
@@ -359,7 +367,7 @@ export default function WorkstationPage() {
     decisionAction==="EXIT"||decisionAction==="DATA CHECK"||displayedCue==="AVOID"?styles.actionSell:
     decisionAction.includes("TAKE")||decisionAction==="RAISE STOP"?styles.actionHold:
     styles.actionWait;
-  const stageReason=cueSignal.available?({
+  const emaStageReason=cueSignal.available?({
     PRICE_ACTION_BEARISH:"Lower highs + lower lows: no long entry.",
     PRICE_ACTION_NOT_BULLISH:"Wait for a clean higher-high + higher-low structure.",
     BELOW_EMA20:"Price is below EMA20.",
@@ -371,12 +379,21 @@ export default function WorkstationPage() {
     WAIT_GREEN:"Pullback is valid. Wait for the completed green confirmation candle.",
     TOO_EXTENDED:"Price is too extended above EMA20. Do not chase.",
     TARGET_UNREALISTIC:"The protected target is too far for current ATR.",
-    ENTRY_READY:"All required 5-minute entry gates passed.",
+    ENTRY_READY:"All required 5-minute EMA20 entry gates passed.",
   } as Record<string,string>)[cueSignal.setupStage]:null;
+  const precisionStageReason=precisionSignal.available?({
+    BEARISH_CONTEXT:"Lower highs + lower lows are active. Precision Structure will not open a long stock entry here.",
+    WAIT_STRUCTURE:"Wait for a clean continuation leg or a sweep plus break-of-structure reversal.",
+    WAIT_PULLBACK:"Structure is valid. Do not chase; wait for the 61.8%–78.6% mitigation zone.",
+    WAIT_CONFIRMATION:"Price reached mitigation. Wait for a completed bullish confirmation candle.",
+    TARGET_UNREALISTIC:"The structure stop is too wide relative to current ATR. Skip the setup.",
+    ENTRY_READY:"Mitigation, confirmation and protected targets are complete.",
+  } as Record<string,string>)[precisionSignal.stage]:null;
+  const stageReason=setupEngine==="precision"?precisionStageReason:emaStageReason;
   const decisionReason=managementRead?.reason??
     (!executionDataFresh?"5-minute execution data is stale. TradeCUE will not issue a fresh entry from stale candles.":
       macroRisk.data?.state==="BLOCKED"?"Macro Risk Firewall is blocking new entries.":
-      stageReason??(cueSignal.available?cueSignal.explanation[0]:cueSignal.reason));
+      stageReason??(selectedSignal.available?selectedSignal.explanation[0]:selectedSignal.reason));
   const watchedItem = currentWatchlist.list.data?.items.find(item=>item.symbol.toUpperCase()===symbol.toUpperCase());
 
   useEffect(()=>{
@@ -406,14 +423,14 @@ export default function WorkstationPage() {
     return ()=>{cancelled=true;document.removeEventListener("visibilitychange",onVisibility);if(sentinel)void sentinel.release().catch(()=>{});};
   },[isMember,automationControl.query.data?.autoPaperEnabled]);
   useEffect(()=>{
-    if(!isMember||!cueSignal.available||!displayedCue||!executionDataFresh)return;
+    if(!isMember||!selectedSignal.available||!displayedCue||!executionDataFresh)return;
     journal.log.mutate({
-      symbol,timeframe:"5m",action:displayedCue,score:cueSignal.score,price:executionLatest?.close??null,
-      structure:structure.summary,plan:cueSignal.plan,
+      symbol,timeframe:"5m",action:displayedCue,score:selectedSignal.score,price:executionLatest?.close??null,
+      structure:(setupEngine==="precision"?"PRECISION · ":"EMA20 · ")+structure.summary,plan:selectedSignal.plan,
     });
-  // only state/symbol/timeframe changes should journal; mutation identity is intentionally omitted
+  // only state/symbol/engine changes should journal; mutation identity is intentionally omitted
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[isMember,symbol,displayedCue,executionDataFresh,cueSignal.available,cueSignal.available?cueSignal.score:null,structure.summary]);
+  },[isMember,symbol,setupEngine,displayedCue,executionDataFresh,selectedSignal.available,selectedSignal.available?selectedSignal.score:null,structure.summary]);
   const epsRead = latestEarnings?.epsActual != null && latestEarnings?.epsEstimated != null
     ? latestEarnings.epsActual >= latestEarnings.epsEstimated ? "Beat" : "Miss"
     : "Unavailable";
@@ -553,7 +570,7 @@ export default function WorkstationPage() {
             <article className={styles.actionTile}>
               <small>TradeCUE now</small>
               <strong className={actionClass}>{actionHeadline}</strong>
-              <span>{cueSignal.available ? "CUE " + cueSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
+              <span>{selectedSignal.available ? (setupEngine==="precision"?"PRECISION ":"EMA20 ") + selectedSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
             </article>
             <article>
               <small>Webull feed</small>
@@ -592,7 +609,7 @@ export default function WorkstationPage() {
                 onOpenSymbol={next=>{setDeskView("stocks");setSymbol(next);setSymbolDraft(next);setTimeout(()=>scrollTo("vision"),0);}}
               />
           </div>
-          <div className={styles.feedStrip}><strong>PAPER ONLY · {symbol}</strong><span>{dataFresh?"Chart data current":"Chart data unavailable or stale"} · Last candle {latestBarLabel}</span><span>Signal: {actionHeadline} · Omega executes on 5m</span><span>Keep-awake: <strong>{wakeState}</strong></span></div>
+          <div className={styles.feedStrip}><strong>PAPER ONLY · {symbol}</strong><span>{dataFresh?"Chart data current":"Chart data unavailable or stale"} · Last candle {latestBarLabel}</span><span>Signal: {actionHeadline} · {setupEngine==="precision"?"Precision manual guidance":"Omega EMA20 auto engine"} · 5m</span><span>Keep-awake: <strong>{wakeState}</strong></span></div>
           <CueOpportunityStrip
             enabled={Boolean(webull.account.data)&&deskView==="markets"}
             onOpenSymbol={(nextSymbol)=>{
@@ -672,32 +689,5 @@ export default function WorkstationPage() {
               </Badge>
             </div>
             {cueSignal.available ? (
-              <div className={styles.currentSignalStrip}>
-                <div><small>Symbol</small><strong>{symbol}</strong></div>
-                <div><small>Action</small><strong className={actionClass}>{actionHeadline}</strong></div>
-                <div><small>Chart score</small><strong>{cueSignal.score}/100</strong></div>
-                <div><small>MTF alignment</small><strong>{intelligence.data?.alignment ?? "—"}</strong></div>
-                <div><small>Composite</small><strong>{intelligence.data?.compositeScore != null ? intelligence.data.compositeScore + "/100" : "—"}</strong></div>
-                <div><small>SPY</small><strong>{intelligence.data?.marketChangePercent == null ? "—" : (intelligence.data.marketChangePercent >= 0 ? "+" : "") + intelligence.data.marketChangePercent.toFixed(2) + "%"}</strong></div>
-              </div>
-            ) : (
-              <div className={styles.unavailablePanel}>
-                <Radar size={22} />
-                <div>
-                  <strong>No fabricated opportunities or scores.</strong>
-                  <p>{cueSignal.reason} Market Scanner scans the broader Webull market; this section evaluates the symbol currently loaded on the chart.</p>
-                </div>
-              </div>
-            )}
-          </section>}
-
-          <section className={chartFocus?`${styles.workGrid} ${styles.workGridFocus}`:styles.workGrid} id="vision">
-            <div className={chartFocus?`${styles.visionCard} ${styles.visionCardFocus}`:styles.visionCard}>
-              <div className={styles.visionHead}>
-                <div>
-                  <small>CUE VISION • REAL MARKET DATA WHEN CONNECTED</small>
-                  <strong>{symbol} <span>{formatPrice(latest?.close)}</span></strong>
-                </div>
-                <div className={styles.visionActions}>
-       
+              <div className={styles.currentSi
 ... (output capped at 40000 chars — re-read with offset/limit)
