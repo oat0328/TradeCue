@@ -1,6 +1,7 @@
 import {apiUser,apiJson,apiFailure} from "../../helpers/apiAccess";
 import {userKeys,webullRead} from "../../helpers/webullClient";
-import {webullBars} from "../../helpers/webullBars";
+import {webullBars,webullBarsBySymbol} from "../../helpers/webullBars";
+import {omegaIntermarketContext} from "../../helpers/omegaIntermarket";
 import {researchOmegaForecast} from "../../helpers/omegaForecastResearch";
 import {forecastQuery,type ForecastResponse} from "./research_GET.schema";
 
@@ -51,11 +52,26 @@ export async function handle(request:Request){
       real_time_required:true,trading_sessions:"OVN,PRE,RTH,ATH",
     });
     const bars=webullBars(raw).slice(-480);
+    // Optional single batched peer-data read; failure never fabricates correlation.
+    const peerSymbols=["SPY","QQQ"].filter(peer=>peer!==symbol);
+    let intermarket:ReturnType<typeof omegaIntermarketContext>=[];
+    if(peerSymbols.length){
+      try{
+        const peersRaw=await webullRead(keys,"/market-data/stocks/bars/list",{},{
+          symbols:peerSymbols,category:"US_STOCK",timespan:"M5",count:"160",
+          real_time_required:true,trading_sessions:"OVN,PRE,RTH,ATH",
+        });
+        const bySymbol=webullBarsBySymbol(peersRaw);
+        intermarket=omegaIntermarketContext(bars,peerSymbols
+          .filter(peer=>(bySymbol[peer]??[]).length>=30)
+          .map(peer=>({symbol:peer,bars:bySymbol[peer]})));
+      }catch{intermarket=[];}
+    }
     const baseline=researchOmegaForecast({symbol,bars,source:"Webull 5-minute OHLCV"});
-    const remote=model==="baseline"?null:await invokeModel(model,bars.length>100?symbol:symbol,bars);
+    const remote=model==="baseline"?null:await invokeModel(model,symbol,bars);
     return apiJson({
       symbol,generatedAt:new Date().toISOString(),source:"Webull 5-minute OHLCV",
-      baseline,remote,executionAllowed:false,
+      baseline,remote,intermarket,executionAllowed:false,
     } satisfies ForecastResponse);
   }catch(error){return apiFailure(error);}
 }
