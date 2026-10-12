@@ -63,6 +63,7 @@ import {chartFrameSeconds} from "../helpers/chartTradeFills";
 import { useMacroRisk } from "../helpers/useMacroRisk";
 import { calculateCueSignal } from "../helpers/cueSignal";
 import { calculateMarketStructure } from "../helpers/marketStructure";
+import { positionCommander } from "../helpers/positionCommander";
 import { TRADECUE_BUILD_ID } from "../helpers/buildVersion";
 import { useAutomationControl } from "../helpers/useAutomationControl";
 import styles from "./workstation.module.css";
@@ -187,6 +188,7 @@ export default function WorkstationPage() {
   const cueSignal = useMemo(() => calculateCueSignal(executionBars), [executionBars]);
   const chartSignal = useMemo(() => calculateCueSignal(bars), [bars]);
   const structure = useMemo(()=>calculateMarketStructure(bars),[bars]);
+  const executionStructure = useMemo(()=>calculateMarketStructure(executionBars),[executionBars]);
   const freshnessMinutes: Record<(typeof timeframes)[number], number> = {
     "5m": 20,
     "15m": 45,
@@ -290,6 +292,7 @@ export default function WorkstationPage() {
   const latestEarnings = fundamental.data?.earnings?.[0];
   const tradeAmount=Math.max(0,Number(tradeAmountText)||0);
   const activePlan=cueSignal.available?cueSignal.plan:null;
+  const watchPlan=cueSignal.available?cueSignal.watchPlan:null;
   const protectedTrade=journal.activity.data?.trades.find(row=>
     row.symbol.toUpperCase()===symbol.toUpperCase()&&
     row.exitTime==null&&
@@ -303,12 +306,77 @@ export default function WorkstationPage() {
     target2:protectedTrade.target2!,
     target3:protectedTrade.target3!,
   }:null;
+  const decisionLevels=protectedLevels??activePlan??watchPlan;
+  const protectedR=cueSignal.available?cueSignal.metrics.protectedTargetR:2;
   const planEntry=activePlan?activePlan.entryHigh:null;
   const planShares=planEntry&&tradeAmount>0?Math.floor(tradeAmount/planEntry):0;
   const planRisk=activePlan&&planShares>0?(activePlan.entryHigh-activePlan.stop)*planShares:null;
   const planProfit1=activePlan&&planShares>0?(activePlan.target1-activePlan.entryHigh)*planShares:null;
   const planProfit2=activePlan&&planShares>0?(activePlan.target2-activePlan.entryHigh)*planShares:null;
   const planProfit3=activePlan&&planShares>0?(activePlan.target3-activePlan.entryHigh)*planShares:null;
+
+  const decisionRiskPerShare=decisionLevels?Math.max(0,decisionLevels.entryHigh-decisionLevels.stop):0;
+  const configuredRiskBudget=Math.max(0,Number(risk?.maxRiskPerTrade??0));
+  const availableBuyingPower=Math.max(0,Number(account?.balance.buyingPower??0));
+  const riskSizedShares=decisionLevels&&decisionRiskPerShare>0&&configuredRiskBudget>0
+    ?Math.floor(configuredRiskBudget/decisionRiskPerShare):0;
+  const buyingPowerShares=decisionLevels&&decisionLevels.entryHigh>0
+    ?Math.floor(availableBuyingPower/decisionLevels.entryHigh):0;
+  const decisionShares=decisionLevels?Math.max(0,Math.min(200,riskSizedShares,buyingPowerShares)):0;
+  const setupGrade=!cueSignal.available?"—":
+    cueSignal.score>=90?"A+":
+    cueSignal.score>=85?"A":
+    cueSignal.score>=80?"A-":
+    cueSignal.score>=75?"B+":
+    cueSignal.score>=70?"B":
+    cueSignal.score>=60?"C":"D";
+
+  const protectedRiskPerShare=protectedLevels?protectedLevels.entryHigh-protectedLevels.stop:0;
+  const currentR=protectedLevels&&protectedRiskPerShare>0&&executionLatest?.close!=null
+    ?(executionLatest.close-protectedLevels.entryHigh)/protectedRiskPerShare:null;
+  const managementRead=position&&protectedLevels&&cueSignal.available
+    ?positionCommander({
+      fresh:executionDataFresh,
+      forceFlat:false,
+      stopHit:executionLatest?.close!=null&&executionLatest.close<=protectedLevels.stop,
+      targetHit:executionLatest?.close!=null&&executionLatest.close>=protectedLevels.target2,
+      currentR,
+      technicalState:cueSignal.state,
+      structureTrend:executionStructure.trend,
+      latestStructureEvent:executionStructure.latestEvent?.kind??null,
+      aboveEma20:cueSignal.metrics.aboveEma20,
+      aboveVwap:cueSignal.metrics.aboveVwap,
+      entryPrice:protectedLevels.entryHigh,
+    })
+    :null;
+  const decisionAction=managementRead?.action??(
+    displayedCue==="BUY"&&activePlan?"ENTER":
+    displayedCue==="WAIT"&&watchPlan?"WAIT / ARMED":
+    actionHeadline
+  );
+  const decisionActionClass=
+    decisionAction==="ENTER"||decisionAction==="HOLD"?styles.actionBuy:
+    decisionAction==="EXIT"||decisionAction==="DATA CHECK"||displayedCue==="AVOID"?styles.actionSell:
+    decisionAction.includes("TAKE")||decisionAction==="RAISE STOP"?styles.actionHold:
+    styles.actionWait;
+  const stageReason=cueSignal.available?({
+    PRICE_ACTION_BEARISH:"Lower highs + lower lows: no long entry.",
+    PRICE_ACTION_NOT_BULLISH:"Wait for a clean higher-high + higher-low structure.",
+    BELOW_EMA20:"Price is below EMA20.",
+    EMA20_NOT_RISING:"EMA20 is not rising yet.",
+    VWAP_UNAVAILABLE:"Regular-session VWAP is not ready.",
+    BELOW_VWAP:"Price is below VWAP.",
+    VOLUME_NOT_RISING:"Setup exists, but confirmation volume has not expanded.",
+    WAIT_PULLBACK:"Trend is bullish. Wait for the EMA20 pullback instead of chasing.",
+    WAIT_GREEN:"Pullback is valid. Wait for the completed green confirmation candle.",
+    TOO_EXTENDED:"Price is too extended above EMA20. Do not chase.",
+    TARGET_UNREALISTIC:"The protected target is too far for current ATR.",
+    ENTRY_READY:"All required 5-minute entry gates passed.",
+  } as Record<string,string>)[cueSignal.setupStage]:null;
+  const decisionReason=managementRead?.reason??
+    (!executionDataFresh?"5-minute execution data is stale. TradeCUE will not issue a fresh entry from stale candles.":
+      macroRisk.data?.state==="BLOCKED"?"Macro Risk Firewall is blocking new entries.":
+      stageReason??(cueSignal.available?cueSignal.explanation[0]:cueSignal.reason));
   const watchedItem = currentWatchlist.list.data?.items.find(item=>item.symbol.toUpperCase()===symbol.toUpperCase());
 
   useEffect(()=>{
@@ -631,67 +699,5 @@ export default function WorkstationPage() {
                   <strong>{symbol} <span>{formatPrice(latest?.close)}</span></strong>
                 </div>
                 <div className={styles.visionActions}>
-                  {isMember&&<Button
-                    size="sm"
-                    variant={watchedItem?"secondary":"outline"}
-                    disabled={currentWatchlist.mutate.isPending}
-                    onClick={async()=>{
-                      if(watchedItem){
-                        await currentWatchlist.mutate.mutateAsync({action:"remove",id:watchedItem.id});
-                      }else{
-                        await currentWatchlist.mutate.mutateAsync({action:"add",symbol,assetType:"stocks"});
-                      }
-                    }}
-                  ><Star size={14}/>{watchedItem?"Watching":"Watch"}</Button>}
-                  <Badge variant="outline">{history.isFetching?"LOADING PRO HISTORY…":history.data?history.data.loaded.toLocaleString()+" REAL BARS":"RECENT DATA"}</Badge>
-                  <Button size="sm" variant="outline" onClick={()=>setChartFocus(value=>!value)}>
-                    {chartFocus?<Minimize2 size={14}/>:<Maximize2 size={14}/>}
-                    {chartFocus?"Exit focus":"Focus chart"}
-                  </Button>
-                  {dataBadge}
-                </div>
-              </div>
-
-              <form className={styles.symbolForm} onSubmit={submitSymbol}>
-                <div className={styles.symbolSearchWrap}>
-                  <Input
-                    aria-label="Stock ticker or company name"
-                    value={symbolDraft}
-                    onChange={(event) => setSymbolDraft(event.target.value)}
-                    placeholder="Ticker or company, e.g. NVDA or Nvidia"
-                    autoComplete="off"
-                  />
-                  {symbolDraft.trim().length>=2&&symbolDraft.trim().toUpperCase()!==symbol&&<div className={styles.symbolSuggestions}>
-                    {symbolSearch.isFetching&&<span>Searching…</span>}
-                    {symbolSearch.data?.items.map(item=><button type="button" key={item.symbol+"-"+item.exchange} onClick={()=>{setSymbol(item.symbol);setSymbolDraft(item.symbol);}}>
-                      <strong>{item.symbol}</strong><span>{item.name}</span><em>{item.exchange??"US"}</em>
-                    </button>)}
-                    {!symbolSearch.isFetching&&symbolSearch.data&&!symbolSearch.data.items.length&&<span>{symbolSearch.data.note}</span>}
-                  </div>}
-                </div>
-                <Button type="submit">Open chart</Button>
-              </form>
-
-              <div className={styles.timeframes}>
-                {timeframes.map(tf=><button
-                  key={tf}
-                  className={timeframe===tf?styles.activeTimeframe:undefined}
-                  onClick={()=>setTimeframe(tf)}
-                  type="button"
-                >{tf}</button>)}
-                <span>{timeframe==="5m"?"OMEGA EXECUTION · EMA20 strategy":"LEARNING / CONTEXT ONLY · Omega still executes on 5m"}</span>
-              </div>
-
-              {isMember&&<div className={styles.quickTradeBar} aria-label="Webull trade controls">
-                <div className={styles.quickTradeStatus}>
-                  <small>WEBULL PAPERTRADE</small>
-                  <strong>{account?"SYNCED":"CONNECT ACCOUNT"}</strong>
-                  <span>{symbol} · {formatPrice(executionLatest?.close)}</span>
-                </div>
-                <button type="button" className={styles.quickBuy} disabled={!account} onClick={()=>openOrderTicket("BUY")}>BUY</button>
-                <button type="button" className={styles.quickSell} disabled={!account||Number(position?.quantity??0)<=0} onClick={()=>openOrderTicket("SELL")}>SELL</button>
-                {assistedLiveTrading&&<button type="button" className={styles.quickLive} onClick={()=>{setDeskView("orders");setTimeout(()=>document.getElementById("webull-live")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}}>LIVE WEBULL</button>}
-              </div>}
-
-              {webull.bars.error && <p className={styles.brokerError} rol
+       
 ... (output capped at 40000 chars — re-read with offset/limit)
