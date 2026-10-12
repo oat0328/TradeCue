@@ -45,6 +45,7 @@ import { ProfessorCueLive } from "../components/ProfessorCueLive";
 import {OmegaProofPanel} from "../components/OmegaProofPanel";
 import { BuildUpdateGuard } from "../components/BuildUpdateGuard";
 import { PortfolioBrainPanel } from "../components/PortfolioBrainPanel";
+import { OmegaGeniusPanel } from "../components/OmegaGeniusPanel";
 import { CueLearningPanel } from "../components/CueLearningPanel";
 import { ReliabilityCenter } from "../components/ReliabilityCenter";
 import { CueNewsCommandCenter } from "../components/CueNewsCommandCenter";
@@ -62,6 +63,7 @@ import {useChartTrades} from "../helpers/useChartTrades";
 import {chartFrameSeconds} from "../helpers/chartTradeFills";
 import { useMacroRisk } from "../helpers/useMacroRisk";
 import { calculateCueSignal } from "../helpers/cueSignal";
+import { reviewOmegaStockSetup } from "../helpers/omegaGenius";
 import { calculateMarketStructure } from "../helpers/marketStructure";
 import { TRADECUE_BUILD_ID } from "../helpers/buildVersion";
 import { useAutomationControl } from "../helpers/useAutomationControl";
@@ -622,6 +624,23 @@ export default function WorkstationPage() {
               </div>
             )}
           </section>}
+
+          {isMember&&<OmegaGeniusPanel symbol={symbol} report={reviewOmegaStockSetup({
+            signal:cueSignal,
+            currentPrice:executionLatest?.close??null,
+            latestBarTime:executionLatest?.time??null,
+            marketOpen:session.label==="MARKET OPEN",
+            hasPosition:Boolean(position),
+            intelligence:intelligence.data?{
+              action:intelligence.data.action,
+              generatedAt:intelligence.data.generatedAt,
+              frames:intelligence.data.frames,
+            }:null,
+            macroState:macroRisk.data?.state??null,
+            accountEquity:account?.balance.equity==null?null:Number(account.balance.equity),
+            buyingPower:account?.balance.buyingPower==null?null:Number(account.balance.buyingPower),
+            maxRiskDollars:risk?.maxRiskPerTrade==null?null:Number(risk.maxRiskPerTrade),
+          })}/>}
 
           <section className={chartFocus?`${styles.workGrid} ${styles.workGridFocus}`:styles.workGrid} id="vision">
             <div className={chartFocus?`${styles.visionCard} ${styles.visionCardFocus}`:styles.visionCard}>
