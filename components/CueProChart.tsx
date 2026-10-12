@@ -161,6 +161,9 @@ export function CueProChart({
   const savedView=useRef<{key:string;from:number;to:number;count:number}|null>(null);
   const structure=useMemo(()=>calculateMarketStructure(clean),[clean]);
   const latest=clean.at(-1)??null;
+  const target2R=levels&&levels.entryHigh>levels.stop
+    ?Math.max(0,(levels.target2-levels.entryHigh)/(levels.entryHigh-levels.stop))
+    :null;
   const annotations=useMemo(()=>chartAnnotations(clean),[clean]);
 
   useEffect(()=>{
@@ -268,7 +271,7 @@ export function CueProChart({
         createSeriesMarkers(entrySpot,[{time:timeOf(clean.at(-1)!.time!),position:"inBar",color:"#b8d6ff",shape:"arrowUp",text:contextOnly?"Study entry":"Planned entry · not filled"}]);
         line(levels.stop,"STOP","#ff435f",LineStyle.Dashed,3);
         line(levels.target1,"1R REFERENCE","#28d79a",LineStyle.Dashed,1);
-        line(levels.target2,"TAKE PROFIT · 2R","#28d79a",LineStyle.Dashed,1);
+        line(levels.target2,"TAKE PROFIT · "+(target2R==null?"—":target2R.toFixed(1)+"R"),"#28d79a",LineStyle.Dashed,1);
         line(levels.target3,"EXTENDED TARGET · 3R","#28d79a",LineStyle.Dotted,1);
       }
     }
@@ -407,7 +410,7 @@ export function CueProChart({
     {drawingMessage&&<p className={styles.drawNotice} role="status">{drawingMessage}</p>}
     <div className={styles.chartGuide}>
       <strong>{levels?(contextOnly?"Study plan — no entry order":action==="BUY"?"Entry plan — Omega must approve all gates":"WAIT — planned entry zone, not an order"):"WAIT — no valid entry plan"}</strong>
-      {levels?<p>Entry zone <b>{fmt(levels.entryLow)}–{fmt(levels.entryHigh)}</b> · Stop <b>{fmt(levels.stop)}</b> · Take profit <b>{fmt(levels.target2)} (2R)</b> · Extended target <b>{fmt(levels.target3)} (3R)</b>. These prices are marked on the chart; a plan is not a fill.</p>:<p>No entry arrow or stop/target prices until a plan exists. A break above a high alone is not an entry.</p>}
+      {levels?<p>Entry zone <b>{fmt(levels.entryLow)}–{fmt(levels.entryHigh)}</b> · Stop <b>{fmt(levels.stop)}</b> · TP1 <b>{fmt(levels.target1)} (1R)</b> · TP2 <b>{fmt(levels.target2)} ({target2R==null?"—":target2R.toFixed(1)+"R"})</b> · TP3 <b>{fmt(levels.target3)} (3R)</b>. These prices are marked on the chart; a watch plan is not a fill.</p>:<p>No entry arrow or stop/target prices until a plan exists. A break above a high alone is not an entry.</p>}
       <p><b>Support</b> = floor · <b>Resistance</b> = ceiling · <b>Broke prior high (BOS up)</b> = price broke a previous swing high · <b>Retracement / Fib</b> = how far price pulled back from a swing move. Study levels do not approve a trade.</p>
     </div>
     <div className={styles.chartWrap}><div ref={host} className={styles.chart}/></div>
@@ -480,3 +483,4 @@ export function CueProChart({
     </>}
   </div>;
 }
+  486
