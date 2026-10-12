@@ -105,7 +105,7 @@ function heikin(bars:Candle[]):Candle[]{
 }
 
 export function CueProChart({
-  symbol,timeframe,bars,levels,action,teachingMode=false,score=null,coach,precision,contextOnly=false,trades=emptyTrades,tradesLoading=false,tradesError,tradesTruncated=false,
+  symbol,timeframe,bars,levels,action,teachingMode=false,score=null,coach,precision,targetMode="standard",contextOnly=false,trades=emptyTrades,tradesLoading=false,tradesError,tradesTruncated=false,
 }:{
   symbol:string;
   timeframe:string;
@@ -116,6 +116,7 @@ export function CueProChart({
   score?:number|null;
   coach?:Coach|null;
   precision?:PrecisionOverlay|null;
+  targetMode?:"standard"|"crawl";
   contextOnly?:boolean;
   trades?:ChartTrade[];tradesLoading?:boolean;tradesError?:string;tradesTruncated?:boolean;
 }){
@@ -174,6 +175,9 @@ export function CueProChart({
   const latest=clean.at(-1)??null;
   const target2R=levels&&levels.entryHigh>levels.stop
     ?Math.max(0,(levels.target2-levels.entryHigh)/(levels.entryHigh-levels.stop))
+    :null;
+  const crawlQuick=levels&&levels.entryHigh>levels.stop
+    ?levels.entryHigh+(levels.entryHigh-levels.stop)*.5
     :null;
   const annotations=useMemo(()=>chartAnnotations(clean),[clean]);
 
@@ -284,13 +288,14 @@ export function CueProChart({
         entrySpot.setData([{time:timeOf(clean.at(-1)!.time!),value:levels.entryLow}]);
         createSeriesMarkers(entrySpot,[{time:timeOf(clean.at(-1)!.time!),position:"inBar",color:"#b8d6ff",shape:"arrowUp",text:contextOnly?"Study entry":"Planned entry · not filled"}]);
         line(levels.stop,"STOP","#ff435f",LineStyle.Dashed,3);
-        line(levels.target1,"1R REFERENCE","#28d79a",LineStyle.Dashed,1);
-        line(levels.target2,"TAKE PROFIT · "+(target2R==null?"—":target2R.toFixed(1)+"R"),"#28d79a",LineStyle.Dashed,1);
-        line(levels.target3,"EXTENDED TARGET · 3R","#28d79a",LineStyle.Dotted,1);
+        if(targetMode==="crawl"&&crawlQuick!=null)line(crawlQuick,"CRAWL QUICK · 0.5R","#f5c86a",LineStyle.Dashed,2);
+        line(levels.target1,targetMode==="crawl"?"TP2 · 1R":"1R REFERENCE","#28d79a",LineStyle.Dashed,1);
+        line(levels.target2,targetMode==="crawl"?"TP3 · 2R":"TAKE PROFIT · "+(target2R==null?"—":target2R.toFixed(1)+"R"),"#28d79a",LineStyle.Dashed,1);
+        line(levels.target3,targetMode==="crawl"?"TP4 · 3R":"EXTENDED TARGET · 3R","#28d79a",LineStyle.Dotted,1);
       }
     }
 
-    const visiblePrices=fitLevels?plottedPrices:levels?[levels.entryLow,levels.entryHigh,levels.stop,levels.target2,levels.target3]:[];
+    const visiblePrices=fitLevels?plottedPrices:levels?[levels.entryLow,levels.entryHigh,levels.stop,...(targetMode==="crawl"&&crawlQuick!=null?[crawlQuick]:[]),levels.target2,levels.target3]:[];
     if(visiblePrices.length){
       primary.applyOptions({autoscaleInfoProvider:(original:()=>any)=>{
         const base=original();
@@ -360,7 +365,7 @@ export function CueProChart({
       if(range)savedView.current={key:symbol+":"+timeframe+":"+chartStyle,from:Number(range.from),to:Number(range.to),count:clean.length};
       resize.disconnect();chartApi.current=null;chart.remove();
     };
-  },[symbol,timeframe,clean,displayBars,levels,chartStyle,contextOnly,structure.resistance?.price,structure.support?.price,annotations,marks,showSessions,showSwings,showFib,fitLevels,tool,selectedTrade,showFills,fillTimes,precision?.bosPrice,precision?.mitigationLow,precision?.mitigationHigh,precision?.momentumShift]);
+  },[symbol,timeframe,clean,displayBars,levels,chartStyle,contextOnly,structure.resistance?.price,structure.support?.price,annotations,marks,showSessions,showSwings,showFib,fitLevels,tool,selectedTrade,showFills,fillTimes,precision?.bosPrice,precision?.mitigationLow,precision?.mitigationHigh,precision?.momentumShift,targetMode,crawlQuick]);
 
   const pinnedIndex=pinnedTime?clean.findIndex(b=>b.time===pinnedTime):-1;
   const hoverIndex=hover?clean.indexOf(hover):-1;
@@ -424,7 +429,7 @@ export function CueProChart({
     {drawingMessage&&<p className={styles.drawNotice} role="status">{drawingMessage}</p>}
     <div className={styles.chartGuide}>
       <strong>{levels?(contextOnly?"Study plan — no entry order":action==="BUY"?"Entry plan — Omega must approve all gates":"WAIT — planned entry zone, not an order"):"WAIT — no valid entry plan"}</strong>
-      {levels?<p>Entry zone <b>{fmt(levels.entryLow)}–{fmt(levels.entryHigh)}</b> · Stop <b>{fmt(levels.stop)}</b> · TP1 <b>{fmt(levels.target1)} (1R)</b> · TP2 <b>{fmt(levels.target2)} ({target2R==null?"—":target2R.toFixed(1)+"R"})</b> · TP3 <b>{fmt(levels.target3)} (3R)</b>. These prices are marked on the chart; a watch plan is not a fill.</p>:<p>No entry arrow or stop/target prices until a plan exists. A break above a high alone is not an entry.</p>}
+      {levels?<p>Entry zone <b>{fmt(levels.entryLow)}–{fmt(levels.entryHigh)}</b> · Stop <b>{fmt(levels.stop)}</b> · {targetMode==="crawl"?<>TP1 Quick <b>{fmt(crawlQuick)} (0.5R)</b> · TP2 <b>{fmt(levels.target1)} (1R)</b> · TP3 <b>{fmt(levels.target2)} (2R)</b> · TP4 <b>{fmt(levels.target3)} (3R)</b></>:<>TP1 <b>{fmt(levels.target1)} (1R)</b> · TP2 <b>{fmt(levels.target2)} ({target2R==null?"—":target2R.toFixed(1)+"R"})</b> · TP3 <b>{fmt(levels.target3)} (3R)</b></>}. These prices are marked on the chart; a watch plan is not a fill.</p>:<p>No entry arrow or stop/target prices until a plan exists. A break above a high alone is not an entry.</p>}
       <p><b>Support</b> = floor · <b>Resistance</b> = ceiling · <b>Broke prior high (BOS up)</b> = price broke a previous swing high · <b>Retracement / Fib</b> = how far price pulled back from a swing move. Study levels do not approve a trade.</p>
       {precision&&<p><b>Precision Structure:</b> {precision.setupType} · {precision.stage.replaceAll("_"," ")} · mitigation {fmt(precision.mitigationLow)}–{fmt(precision.mitigationHigh)} · BOS {fmt(precision.bosPrice)}. {precision.confirmation?"Confirmation complete.":"Confirmation still required."}</p>}
     </div>
@@ -500,11 +505,5 @@ export function CueProChart({
       <div className={styles.foot} role="group" aria-label="Select candle lesson">
         <Button type="button" size="sm" variant="outline" disabled={lessonIndex<=0} onClick={()=>setPinnedTime(clean[lessonIndex-1].time??null)}>Previous candle</Button>
         <Button type="button" size="sm" variant="outline" disabled={lessonIndex>=clean.length-1} onClick={()=>setPinnedTime(clean[lessonIndex+1].time??null)}>Next candle</Button>
-        <Button type="button" size="sm" variant="ghost" onClick={()=>{setPinnedTime(null);setHover(null);}}>Latest candle</Button>
-        <span>{pinnedIndex>=0?"Pinned lesson":"Hover to inspect · tap to pin"}</span>
-      </div>
-      <CandleEducation bars={clean} index={lessonIndex} symbol={symbol} timeframe={timeframe} replay={false}/>
-    </>}
-  </div>;
-}
-  510
+        <Button type="button"
+... (output capped at 40000 chars — re-read with offset/limit)
