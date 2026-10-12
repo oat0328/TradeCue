@@ -32,6 +32,16 @@ type Coach={
   targetReady:boolean;
   stage:string;
 };
+type PrecisionOverlay={
+  setupType:string;
+  stage:string;
+  direction:string;
+  mitigationLow:number|null;
+  mitigationHigh:number|null;
+  bosPrice:number|null;
+  momentumShift:boolean;
+  confirmation:boolean;
+};
 const drawingTools=[
  {label:"Support",color:"#19d9a0",kind:"level"},
  {label:"Resistance",color:"#f5a742",kind:"level"},
@@ -95,7 +105,7 @@ function heikin(bars:Candle[]):Candle[]{
 }
 
 export function CueProChart({
-  symbol,timeframe,bars,levels,action,teachingMode=false,score=null,coach,contextOnly=false,trades=emptyTrades,tradesLoading=false,tradesError,tradesTruncated=false,
+  symbol,timeframe,bars,levels,action,teachingMode=false,score=null,coach,precision,contextOnly=false,trades=emptyTrades,tradesLoading=false,tradesError,tradesTruncated=false,
 }:{
   symbol:string;
   timeframe:string;
@@ -105,6 +115,7 @@ export function CueProChart({
   teachingMode?:boolean;
   score?:number|null;
   coach?:Coach|null;
+  precision?:PrecisionOverlay|null;
   contextOnly?:boolean;
   trades?:ChartTrade[];tradesLoading?:boolean;tradesError?:string;tradesTruncated?:boolean;
 }){
@@ -263,6 +274,9 @@ export function CueProChart({
       }
       if(structure.resistance)line(structure.resistance.price,"RESISTANCE","#f5a742",LineStyle.Dashed,2);
       if(structure.support)line(structure.support.price,"SUPPORT","#19d9a0",LineStyle.Dashed,1);
+      if(precision?.bosPrice)line(precision.bosPrice,precision.momentumShift?"MOMENTUM SHIFT / BOS":"BOS","#64d8ff",LineStyle.Dotted,2);
+      if(precision?.mitigationHigh)line(precision.mitigationHigh,"MITIGATION 61.8%","#b9a7ff",LineStyle.Dashed,2);
+      if(precision?.mitigationLow&&precision.mitigationLow!==precision.mitigationHigh)line(precision.mitigationLow,"MITIGATION 78.6%","#b9a7ff",LineStyle.Dashed,2);
       if(levels){
         line(levels.entryLow,contextOnly?"STUDY ENTRY":"PLANNED ENTRY","#2f80ff",LineStyle.Solid,2);
         line(levels.entryHigh,contextOnly?"STUDY TRIGGER":"ENTRY ZONE TOP","#66a3ff",LineStyle.Solid,2);
@@ -346,7 +360,7 @@ export function CueProChart({
       if(range)savedView.current={key:symbol+":"+timeframe+":"+chartStyle,from:Number(range.from),to:Number(range.to),count:clean.length};
       resize.disconnect();chartApi.current=null;chart.remove();
     };
-  },[symbol,timeframe,clean,displayBars,levels,chartStyle,contextOnly,structure.resistance?.price,structure.support?.price,annotations,marks,showSessions,showSwings,showFib,fitLevels,tool,selectedTrade,showFills,fillTimes]);
+  },[symbol,timeframe,clean,displayBars,levels,chartStyle,contextOnly,structure.resistance?.price,structure.support?.price,annotations,marks,showSessions,showSwings,showFib,fitLevels,tool,selectedTrade,showFills,fillTimes,precision?.bosPrice,precision?.mitigationLow,precision?.mitigationHigh,precision?.momentumShift]);
 
   const pinnedIndex=pinnedTime?clean.findIndex(b=>b.time===pinnedTime):-1;
   const hoverIndex=hover?clean.indexOf(hover):-1;
@@ -412,6 +426,7 @@ export function CueProChart({
       <strong>{levels?(contextOnly?"Study plan — no entry order":action==="BUY"?"Entry plan — Omega must approve all gates":"WAIT — planned entry zone, not an order"):"WAIT — no valid entry plan"}</strong>
       {levels?<p>Entry zone <b>{fmt(levels.entryLow)}–{fmt(levels.entryHigh)}</b> · Stop <b>{fmt(levels.stop)}</b> · TP1 <b>{fmt(levels.target1)} (1R)</b> · TP2 <b>{fmt(levels.target2)} ({target2R==null?"—":target2R.toFixed(1)+"R"})</b> · TP3 <b>{fmt(levels.target3)} (3R)</b>. These prices are marked on the chart; a watch plan is not a fill.</p>:<p>No entry arrow or stop/target prices until a plan exists. A break above a high alone is not an entry.</p>}
       <p><b>Support</b> = floor · <b>Resistance</b> = ceiling · <b>Broke prior high (BOS up)</b> = price broke a previous swing high · <b>Retracement / Fib</b> = how far price pulled back from a swing move. Study levels do not approve a trade.</p>
+      {precision&&<p><b>Precision Structure:</b> {precision.setupType} · {precision.stage.replaceAll("_"," ")} · mitigation {fmt(precision.mitigationLow)}–{fmt(precision.mitigationHigh)} · BOS {fmt(precision.bosPrice)}. {precision.confirmation?"Confirmation complete.":"Confirmation still required."}</p>}
     </div>
     <div className={styles.chartWrap}><div ref={host} className={styles.chart}/></div>
     <section className={styles.fillDesk} aria-label="Your confirmed entry and exit fills">
@@ -454,6 +469,15 @@ export function CueProChart({
       {levels&&<span>Entry {fmt(levels.entryLow)}–{fmt(levels.entryHigh)} · Stop {fmt(levels.stop)} · Resistance {fmt(structure.resistance?.price)}</span>}
     </div>
 
+    {precision&&<div className={styles.coach}>
+      <div className={styles.coachHead}><span>{timeframe} PRECISION STRUCTURE</span><strong>{precision.stage.replaceAll("_"," ")}</strong><em>{precision.setupType}</em></div>
+      <div className={styles.coachChecks}>
+        <span className={structure.trend==="BULLISH"?styles.pass:styles.waiting}><b>1</b>HH + HL structure</span>
+        <span className={precision.bosPrice!=null?styles.pass:styles.waiting}><b>2</b>BOS / momentum shift</span>
+        <span className={precision.mitigationLow!=null&&precision.mitigationHigh!=null?styles.pass:styles.waiting}><b>3</b>Mitigation zone</span>
+        <span className={precision.confirmation?styles.pass:styles.waiting}><b>4</b>Confirmation</span>
+      </div>
+    </div>}
     {coach&&<div className={styles.coach}>
       <div className={styles.coachHead}><span>{timeframe} EMA20 PLAYBOOK</span><strong>{coach.stage.replaceAll("_"," ")}</strong><em>EMA20 {fmt(coach.ema20)}</em></div>
       <div className={styles.coachChecks}>
@@ -483,4 +507,4 @@ export function CueProChart({
     </>}
   </div>;
 }
-  486
+  510
