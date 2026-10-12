@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { readApiResponse } from "../../helpers/apiClient";
 import type { OmegaForecastResearch } from "../../helpers/omegaForecastResearch";
+import type {MarketRelationship} from "../../helpers/omegaIntermarket";
 
 export const forecastQuery=z.object({
   symbol:z.string().trim().toUpperCase().regex(/^[A-Z0-9.-]{1,15}$/),
@@ -9,6 +10,7 @@ export const forecastQuery=z.object({
 export type ForecastResponse={
   symbol:string;generatedAt:string;source:string;
   baseline:OmegaForecastResearch;
+  intermarket:MarketRelationship[];
   remote:{
     model:"chronos2"|"kronos"|"nhits";
     status:"READY"|"NOT_CONFIGURED"|"UNAVAILABLE"|"ERROR";
