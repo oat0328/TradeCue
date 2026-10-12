@@ -19,7 +19,7 @@ describe("Omega Genius paper research vetoes",()=>{
     const result=reviewOmegaStockSetup(input());
     expect(result.verdict).toBe("SETUP_CANDIDATE");
     expect(result.plan?.grossR).toBe(2.5);
-    expect(result.plan?.maxPaperShares).toBe(80);
+    expect(result.plan?.maxPaperShares).toBe(50);
     expect(result.headline).not.toMatch(/win rate/i);
   });
   it("vetoes stale bars, future timestamps and stale intelligence",()=>{
