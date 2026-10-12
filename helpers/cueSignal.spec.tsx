@@ -91,6 +91,9 @@ describe("calculateCueSignal",()=>{
     expect(result.metrics.pullback).toBeTrue();
     expect(result.metrics.greenConfirmation).toBeFalse();
     expect(result.state).not.toBe("BUY");
+    expect(result.plan).toBeNull();
+    expect(result.setupStage).toBe("WAIT_GREEN");
+    expect(result.watchPlan).not.toBeNull();
   });
 
   it("builds TP1/TP2/TP3 at exactly 1R/2R/3R from the confirmed EMA20 setup",()=>{
@@ -140,6 +143,7 @@ describe("calculateCueSignal",()=>{
       expect(result.state).not.toBe("BUY");
       expect(result.setupStage).toBe("PRICE_ACTION_BEARISH");
       expect(result.plan).toBeNull();
+      expect(result.watchPlan).toBeNull();
     }
   });
 
@@ -152,3 +156,4 @@ describe("calculateCueSignal",()=>{
     expect(result.metrics.relativeVolume).toBeGreaterThan(0);
   });
 });
+  159
