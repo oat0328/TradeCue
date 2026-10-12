@@ -42,6 +42,8 @@ import { MarketPulsePanel } from "../components/MarketPulsePanel";
 import { PositionMonitorPanel } from "../components/PositionMonitorPanel";
 import { CueCheatSheet } from "../components/CueCheatSheet";
 import { ProfessorCueLive } from "../components/ProfessorCueLive";
+import { CueSignalCard } from "../components/CueSignalCard";
+import { CueTradeAlertFeed } from "../components/CueTradeAlertFeed";
 import {OmegaProofPanel} from "../components/OmegaProofPanel";
 import { BuildUpdateGuard } from "../components/BuildUpdateGuard";
 import { PortfolioBrainPanel } from "../components/PortfolioBrainPanel";
@@ -65,7 +67,9 @@ import {chartFrameSeconds} from "../helpers/chartTradeFills";
 import { useMacroRisk } from "../helpers/useMacroRisk";
 import { calculateCueSignal } from "../helpers/cueSignal";
 import { reviewOmegaStockSetup } from "../helpers/omegaGenius";
+import { calculatePrecisionStructureSignal } from "../helpers/precisionStructure";
 import { calculateMarketStructure } from "../helpers/marketStructure";
+import { positionCommander } from "../helpers/positionCommander";
 import { TRADECUE_BUILD_ID } from "../helpers/buildVersion";
 import { useAutomationControl } from "../helpers/useAutomationControl";
 import styles from "./workstation.module.css";
@@ -140,6 +144,8 @@ export default function WorkstationPage() {
   const [symbol, setSymbol] = useState("NVDA");
   const [symbolDraft, setSymbolDraft] = useState("NVDA");
   const [timeframe, setTimeframe] = useState<(typeof timeframes)[number]>("5m");
+  const [setupEngine,setSetupEngine]=useState<"ema20"|"precision">("ema20");
+  const [targetMode,setTargetMode]=useState<"standard"|"crawl">("standard");
   const [accountId, setAccountId] = useState<string>();
   const [deskMode, setDeskMode] = useState<"teach"|"pro">("pro");
   const [chartFocus, setChartFocus] = useState(false);
@@ -189,7 +195,12 @@ export default function WorkstationPage() {
   const chartReady = bars.length > 0;
   const cueSignal = useMemo(() => calculateCueSignal(executionBars), [executionBars]);
   const chartSignal = useMemo(() => calculateCueSignal(bars), [bars]);
+  const precisionSignal = useMemo(()=>calculatePrecisionStructureSignal(executionBars),[executionBars]);
+  const precisionChartSignal = useMemo(()=>calculatePrecisionStructureSignal(bars),[bars]);
+  const selectedSignal=setupEngine==="precision"?precisionSignal:cueSignal;
+  const selectedChartSignal=setupEngine==="precision"?precisionChartSignal:chartSignal;
   const structure = useMemo(()=>calculateMarketStructure(bars),[bars]);
+  const executionStructure = useMemo(()=>calculateMarketStructure(executionBars),[executionBars]);
   const freshnessMinutes: Record<(typeof timeframes)[number], number> = {
     "5m": 20,
     "15m": 45,
@@ -216,14 +227,16 @@ export default function WorkstationPage() {
   const position = account?.positions.find(
     (item) => item.symbol.toUpperCase() === symbol.toUpperCase() && Number(item.quantity ?? 0) > 0,
   );
-  const displayedCue = cueSignal.available
+  const externalAvoid=setupEngine==="ema20"&&intelligence.data?.action==="AVOID";
+  const externalEntryReady=setupEngine==="precision"||(intelligence.data?intelligence.data.action==="ENTRY_READY":true);
+  const displayedCue = selectedSignal.available
     ? !executionDataFresh
       ? "WAIT"
       : position
-        ? (cueSignal.state === "AVOID" || intelligence.data?.action === "AVOID") ? "SELL" : "HOLD"
-        : (cueSignal.state === "AVOID" || intelligence.data?.action === "AVOID")
+        ? (selectedSignal.state === "AVOID" || externalAvoid) ? "SELL" : "HOLD"
+        : (selectedSignal.state === "AVOID" || externalAvoid)
           ? "AVOID"
-          : cueSignal.state === "BUY" && macroRisk.data?.state !== "BLOCKED" && (intelligence.data ? intelligence.data.action === "ENTRY_READY" : true)
+          : selectedSignal.state === "BUY" && macroRisk.data?.state !== "BLOCKED" && externalEntryReady
             ? "BUY"
             : "WAIT"
     : null;
@@ -292,7 +305,8 @@ export default function WorkstationPage() {
 
   const latestEarnings = fundamental.data?.earnings?.[0];
   const tradeAmount=Math.max(0,Number(tradeAmountText)||0);
-  const activePlan=cueSignal.available?cueSignal.plan:null;
+  const activePlan=selectedSignal.available?selectedSignal.plan:null;
+  const watchPlan=selectedSignal.available?selectedSignal.watchPlan:null;
   const protectedTrade=journal.activity.data?.trades.find(row=>
     row.symbol.toUpperCase()===symbol.toUpperCase()&&
     row.exitTime==null&&
@@ -306,12 +320,86 @@ export default function WorkstationPage() {
     target2:protectedTrade.target2!,
     target3:protectedTrade.target3!,
   }:null;
+  const decisionLevels=protectedLevels??activePlan??watchPlan;
+  const protectedR=setupEngine==="ema20"&&cueSignal.available?cueSignal.metrics.protectedTargetR:2;
   const planEntry=activePlan?activePlan.entryHigh:null;
   const planShares=planEntry&&tradeAmount>0?Math.floor(tradeAmount/planEntry):0;
   const planRisk=activePlan&&planShares>0?(activePlan.entryHigh-activePlan.stop)*planShares:null;
   const planProfit1=activePlan&&planShares>0?(activePlan.target1-activePlan.entryHigh)*planShares:null;
   const planProfit2=activePlan&&planShares>0?(activePlan.target2-activePlan.entryHigh)*planShares:null;
   const planProfit3=activePlan&&planShares>0?(activePlan.target3-activePlan.entryHigh)*planShares:null;
+
+  const decisionRiskPerShare=decisionLevels?Math.max(0,decisionLevels.entryHigh-decisionLevels.stop):0;
+  const configuredRiskBudget=Math.max(0,Number(risk?.maxRiskPerTrade??0));
+  const availableBuyingPower=Math.max(0,Number(account?.balance.buyingPower??0));
+  const riskSizedShares=decisionLevels&&decisionRiskPerShare>0&&configuredRiskBudget>0
+    ?Math.floor(configuredRiskBudget/decisionRiskPerShare):0;
+  const buyingPowerShares=decisionLevels&&decisionLevels.entryHigh>0
+    ?Math.floor(availableBuyingPower/decisionLevels.entryHigh):0;
+  const decisionShares=decisionLevels?Math.max(0,Math.min(200,riskSizedShares,buyingPowerShares)):0;
+  const setupGrade=!selectedSignal.available?"—":
+    selectedSignal.score>=90?"A+":
+    selectedSignal.score>=85?"A":
+    selectedSignal.score>=80?"A-":
+    selectedSignal.score>=75?"B+":
+    selectedSignal.score>=70?"B":
+    selectedSignal.score>=60?"C":"D";
+
+  const protectedRiskPerShare=protectedLevels?protectedLevels.entryHigh-protectedLevels.stop:0;
+  const currentR=protectedLevels&&protectedRiskPerShare>0&&executionLatest?.close!=null
+    ?(executionLatest.close-protectedLevels.entryHigh)/protectedRiskPerShare:null;
+  const managementRead=position&&protectedLevels&&selectedSignal.available
+    ?positionCommander({
+      fresh:executionDataFresh,
+      forceFlat:false,
+      stopHit:executionLatest?.close!=null&&executionLatest.close<=protectedLevels.stop,
+      targetHit:executionLatest?.close!=null&&executionLatest.close>=protectedLevels.target2,
+      currentR,
+      technicalState:selectedSignal.state,
+      structureTrend:executionStructure.trend,
+      latestStructureEvent:executionStructure.latestEvent?.kind??null,
+      aboveEma20:setupEngine==="ema20"&&cueSignal.available?cueSignal.metrics.aboveEma20:null,
+      aboveVwap:setupEngine==="ema20"&&cueSignal.available?cueSignal.metrics.aboveVwap:null,
+      entryPrice:protectedLevels.entryHigh,
+    })
+    :null;
+  const decisionAction=managementRead?.action??(
+    displayedCue==="BUY"&&activePlan?"ENTER":
+    displayedCue==="WAIT"&&watchPlan?"WAIT / ARMED":
+    actionHeadline
+  );
+  const decisionActionClass=
+    decisionAction==="ENTER"||decisionAction==="HOLD"?styles.actionBuy:
+    decisionAction==="EXIT"||decisionAction==="DATA CHECK"||displayedCue==="AVOID"?styles.actionSell:
+    decisionAction.includes("TAKE")||decisionAction==="RAISE STOP"?styles.actionHold:
+    styles.actionWait;
+  const emaStageReason=cueSignal.available?({
+    PRICE_ACTION_BEARISH:"Lower highs + lower lows: no long entry.",
+    PRICE_ACTION_NOT_BULLISH:"Wait for a clean higher-high + higher-low structure.",
+    BELOW_EMA20:"Price is below EMA20.",
+    EMA20_NOT_RISING:"EMA20 is not rising yet.",
+    VWAP_UNAVAILABLE:"Regular-session VWAP is not ready.",
+    BELOW_VWAP:"Price is below VWAP.",
+    VOLUME_NOT_RISING:"Setup exists, but confirmation volume has not expanded.",
+    WAIT_PULLBACK:"Trend is bullish. Wait for the EMA20 pullback instead of chasing.",
+    WAIT_GREEN:"Pullback is valid. Wait for the completed green confirmation candle.",
+    TOO_EXTENDED:"Price is too extended above EMA20. Do not chase.",
+    TARGET_UNREALISTIC:"The protected target is too far for current ATR.",
+    ENTRY_READY:"All required 5-minute EMA20 entry gates passed.",
+  } as Record<string,string>)[cueSignal.setupStage]:null;
+  const precisionStageReason=precisionSignal.available?({
+    BEARISH_CONTEXT:"Lower highs + lower lows are active. Precision Structure will not open a long stock entry here.",
+    WAIT_STRUCTURE:"Wait for a clean continuation leg or a sweep plus break-of-structure reversal.",
+    WAIT_PULLBACK:"Structure is valid. Do not chase; wait for the 61.8%–78.6% mitigation zone.",
+    WAIT_CONFIRMATION:"Price reached mitigation. Wait for a completed bullish confirmation candle.",
+    TARGET_UNREALISTIC:"The structure stop is too wide relative to current ATR. Skip the setup.",
+    ENTRY_READY:"Mitigation, confirmation and protected targets are complete.",
+  } as Record<string,string>)[precisionSignal.stage]:null;
+  const stageReason=setupEngine==="precision"?precisionStageReason:emaStageReason;
+  const decisionReason=managementRead?.reason??
+    (!executionDataFresh?"5-minute execution data is stale. TradeCUE will not issue a fresh entry from stale candles.":
+      macroRisk.data?.state==="BLOCKED"?"Macro Risk Firewall is blocking new entries.":
+      stageReason??(selectedSignal.available?selectedSignal.explanation[0]:selectedSignal.reason));
   const watchedItem = currentWatchlist.list.data?.items.find(item=>item.symbol.toUpperCase()===symbol.toUpperCase());
 
   useEffect(()=>{
@@ -341,14 +429,14 @@ export default function WorkstationPage() {
     return ()=>{cancelled=true;document.removeEventListener("visibilitychange",onVisibility);if(sentinel)void sentinel.release().catch(()=>{});};
   },[isMember,automationControl.query.data?.autoPaperEnabled]);
   useEffect(()=>{
-    if(!isMember||!cueSignal.available||!displayedCue||!executionDataFresh)return;
+    if(!isMember||!selectedSignal.available||!displayedCue||!executionDataFresh)return;
     journal.log.mutate({
-      symbol,timeframe:"5m",action:displayedCue,score:cueSignal.score,price:executionLatest?.close??null,
-      structure:structure.summary,plan:cueSignal.plan,
+      symbol,timeframe:"5m",action:displayedCue,score:selectedSignal.score,price:executionLatest?.close??null,
+      structure:(setupEngine==="precision"?"PRECISION · ":"EMA20 · ")+structure.summary,plan:selectedSignal.plan,
     });
-  // only state/symbol/timeframe changes should journal; mutation identity is intentionally omitted
+  // only state/symbol/engine changes should journal; mutation identity is intentionally omitted
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[isMember,symbol,displayedCue,executionDataFresh,cueSignal.available,cueSignal.available?cueSignal.score:null,structure.summary]);
+  },[isMember,symbol,setupEngine,displayedCue,executionDataFresh,selectedSignal.available,selectedSignal.available?selectedSignal.score:null,structure.summary]);
   const epsRead = latestEarnings?.epsActual != null && latestEarnings?.epsEstimated != null
     ? latestEarnings.epsActual >= latestEarnings.epsEstimated ? "Beat" : "Miss"
     : "Unavailable";
@@ -488,7 +576,7 @@ export default function WorkstationPage() {
             <article className={styles.actionTile}>
               <small>TradeCUE now</small>
               <strong className={actionClass}>{actionHeadline}</strong>
-              <span>{cueSignal.available ? "CUE " + cueSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
+              <span>{selectedSignal.available ? (setupEngine==="precision"?"PRECISION ":"EMA20 ") + selectedSignal.score + " · MTF " + (intelligence.data?.alignment ?? "—") : "Waiting for Webull candles"}</span>
             </article>
             <article>
               <small>Webull feed</small>
@@ -527,7 +615,7 @@ export default function WorkstationPage() {
                 onOpenSymbol={next=>{setDeskView("stocks");setSymbol(next);setSymbolDraft(next);setTimeout(()=>scrollTo("vision"),0);}}
               />
           </div>
-          <div className={styles.feedStrip}><strong>PAPER ONLY · {symbol}</strong><span>{dataFresh?"Chart data current":"Chart data unavailable or stale"} · Last candle {latestBarLabel}</span><span>Signal: {actionHeadline} · Omega executes on 5m</span><span>Keep-awake: <strong>{wakeState}</strong></span></div>
+          <div className={styles.feedStrip}><strong>PAPER ONLY · {symbol}</strong><span>{dataFresh?"Chart data current":"Chart data unavailable or stale"} · Last candle {latestBarLabel}</span><span>Signal: {actionHeadline} · {setupEngine==="precision"?"Precision manual guidance":"Omega EMA20 auto engine"} · 5m</span><span>Keep-awake: <strong>{wakeState}</strong></span></div>
           <CueOpportunityStrip
             enabled={Boolean(webull.account.data)&&deskView==="markets"}
             onOpenSymbol={(nextSymbol)=>{
@@ -643,7 +731,6 @@ export default function WorkstationPage() {
             buyingPower:account?.balance.buyingPower==null?null:Number(account.balance.buyingPower),
             maxRiskDollars:risk?.maxRiskPerTrade==null?null:Number(risk.maxRiskPerTrade),
           })}/>}
-
           <section className={chartFocus?`${styles.workGrid} ${styles.workGridFocus}`:styles.workGrid} id="vision">
             <div className={chartFocus?`${styles.visionCard} ${styles.visionCardFocus}`:styles.visionCard}>
               <div className={styles.visionHead}>
@@ -700,7 +787,20 @@ export default function WorkstationPage() {
                   onClick={()=>setTimeframe(tf)}
                   type="button"
                 >{tf}</button>)}
-                <span>{timeframe==="5m"?"OMEGA EXECUTION · EMA20 strategy":"LEARNING / CONTEXT ONLY · Omega still executes on 5m"}</span>
+                <span>{timeframe==="5m"
+                  ?setupEngine==="precision"
+                    ?"PRECISION STRUCTURE · MANUAL PAPER GUIDANCE · AUTO EXECUTION OFF"
+                    :"OMEGA AUTO EXECUTION · EMA20 strategy"
+                  :"LEARNING / CONTEXT ONLY · execution decisions still use 5m"}</span>
+              </div>
+
+              <div className={styles.strategySwitch} role="group" aria-label="TradeCUE setup engine">
+                <button type="button" aria-pressed={setupEngine==="ema20"} className={setupEngine==="ema20"?styles.strategyActive:undefined} onClick={()=>setSetupEngine("ema20")}>
+                  <strong>EMA20 Pullback</strong><span>Current Omega playbook</span>
+                </button>
+                <button type="button" aria-pressed={setupEngine==="precision"} className={setupEngine==="precision"?styles.strategyActive:undefined} onClick={()=>setSetupEngine("precision")}>
+                  <strong>Precision Structure</strong><span>HH/HL · BOS · mitigation · confirmation</span>
+                </button>
               </div>
 
               {isMember&&<div className={styles.quickTradeBar} aria-label="Webull trade controls">
@@ -714,5 +814,398 @@ export default function WorkstationPage() {
                 {assistedLiveTrading&&<button type="button" className={styles.quickLive} onClick={()=>{setDeskView("orders");setTimeout(()=>document.getElementById("webull-live")?.scrollIntoView({behavior:"smooth",block:"start"}),0);}}>LIVE WEBULL</button>}
               </div>}
 
-              {webull.bars.error && <p className={styles.brokerError} rol
-... (output capped at 40000 chars — re-read with offset/limit)
+              {webull.bars.error && <p className={styles.brokerError} role="alert">{webull.bars.error.message}</p>}
+
+              <div onDoubleClick={()=>setChartFocus(value=>!value)} title="Double-click chart to expand or restore">
+              <CueProChart
+                symbol={symbol}
+                timeframe={timeframe}
+                bars={chartBars}
+                trades={chartTrades.data?.trades}
+                tradesLoading={chartTrades.isFetching}
+                tradesError={chartTrades.error?.message}
+                tradesTruncated={chartTrades.data?.truncated}
+                levels={timeframe==="5m"&&protectedLevels
+                  ?protectedLevels
+                  :(selectedChartSignal.available&&dataFresh?(selectedChartSignal.plan??selectedChartSignal.watchPlan):null)}
+                action={timeframe==="5m"?displayedCue:(selectedChartSignal.available?selectedChartSignal.state:null)}
+                teachingMode={deskMode==="teach"}
+                score={selectedChartSignal.available?selectedChartSignal.score:null}
+                targetMode={targetMode}
+                contextOnly={timeframe!=="5m"}
+                precision={setupEngine==="precision"&&precisionChartSignal.available?{
+                  setupType:precisionChartSignal.setupType,
+                  stage:precisionChartSignal.stage,
+                  direction:precisionChartSignal.direction,
+                  mitigationLow:precisionChartSignal.metrics.mitigationLow,
+                  mitigationHigh:precisionChartSignal.metrics.mitigationHigh,
+                  bosPrice:precisionChartSignal.metrics.bosPrice,
+                  momentumShift:precisionChartSignal.metrics.momentumShift,
+                  confirmation:precisionChartSignal.metrics.confirmation,
+                }:null}
+                coach={setupEngine==="ema20"&&chartSignal.available?{
+                  ema20:chartSignal.metrics.ema20,
+                  vwap:chartSignal.metrics.vwap,
+                  priceActionTrend:chartSignal.metrics.priceActionTrend,
+                  aboveEma20:chartSignal.metrics.aboveEma20,
+                  aboveVwap:chartSignal.metrics.aboveVwap,
+                  volumeIncreasing:chartSignal.metrics.volumeIncreasing,
+                  pullback:chartSignal.metrics.pullback,
+                  greenConfirmation:chartSignal.metrics.greenConfirmation,
+                  stopReady:Boolean(chartSignal.plan),
+                  targetReady:Boolean(chartSignal.plan),
+                  stage:chartSignal.setupStage,
+                }:null}
+              />
+              </div>
+
+
+            </div>
+
+            <div className={chartFocus?`${styles.decisionCard} ${styles.decisionCardFocus}`:styles.decisionCard}>
+              <section className={styles.cueDecisionPanel} aria-label="TradeCUE live trade decision">
+                <div className={styles.cueDecisionTop}>
+                  <div>
+                    <small>CUE DECISION · {setupEngine==="precision"?"PRECISION STRUCTURE":"EMA20"} · 5M</small>
+                    <h2 className={decisionActionClass}>{decisionAction}</h2>
+                    <span>{position?"LIVE POSITION MANAGEMENT":activePlan?"ENTRY READY":watchPlan?"WATCH PLAN ARMED":"WAITING FOR VALID SETUP"}</span>
+                  </div>
+                  <div className={styles.cueDecisionScore}>
+                    <span>SETUP GRADE</span>
+                    <strong>{setupGrade}</strong>
+                    <em>{selectedSignal.available?selectedSignal.score+"/100":"—"}</em>
+                  </div>
+                </div>
+
+                <p className={styles.cueDecisionReason}>{decisionReason}</p>
+
+                <div className={styles.decisionLevelsGrid}>
+                  <div className={styles.entryLevel}>
+                    <small>{position?"FILLED ENTRY":"ENTRY / TRIGGER"}</small>
+                    <strong>{formatPrice(decisionLevels?.entryHigh)}</strong>
+                    <span>{activePlan?"READY":watchPlan&&!position?"WAIT FOR CONFIRMATION":position?"POSITION OPEN":"NO VALID LEVEL"}</span>
+                  </div>
+                  <div className={styles.stopLevel}>
+                    <small>{managementRead?.suggestedStop!=null?"NEW PROTECTIVE STOP":"STOP / INVALIDATION"}</small>
+                    <strong>{formatPrice(managementRead?.suggestedStop??decisionLevels?.stop)}</strong>
+                    <span>{managementRead?.suggestedStop!=null?"PROTECT PROFIT":"SETUP FAILS BELOW HERE"}</span>
+                  </div>
+                  <div className={styles.targetLevel}>
+                    <small>TP1 · 1R</small>
+                    <strong>{formatPrice(decisionLevels?.target1)}</strong>
+                    <span>FIRST SCALE AREA</span>
+                  </div>
+                  <div className={styles.targetLevel}>
+                    <small>TP2 · {protectedR.toFixed(1)}R</small>
+                    <strong>{formatPrice(decisionLevels?.target2)}</strong>
+                    <span>PROTECTED TARGET</span>
+                  </div>
+                  <div className={styles.targetLevel}>
+                    <small>TP3 · 3R</small>
+                    <strong>{formatPrice(decisionLevels?.target3)}</strong>
+                    <span>EXTENDED TARGET</span>
+                  </div>
+                  <div>
+                    <small>{position?"POSITION":"RISK-SIZED SHARES"}</small>
+                    <strong>{position?Number(position.quantity??0):decisionShares||"—"}</strong>
+                    <span>{position&&currentR!=null?currentR.toFixed(2)+"R NOW":decisionShares?"MAX 200 PAPER CALIBRATION":"NEEDS VALID PLAN + RISK BUDGET"}</span>
+                  </div>
+                </div>
+
+                <div className={styles.decisionMeta}>
+                  <span><b>Structure</b>{executionStructure.trend} · {executionStructure.pattern}</span>
+                  {setupEngine==="precision"&&precisionSignal.available?<>
+                    <span><b>Setup</b>{precisionSignal.setupType}</span>
+                    <span><b>BOS / shift</b>{precisionSignal.metrics.momentumShift?"SHIFT + BOS":precisionSignal.metrics.bosUp?"BOS UP":"WAIT"}</span>
+                    <span><b>Mitigation</b>{precisionSignal.metrics.mitigationLow!=null&&precisionSignal.metrics.mitigationHigh!=null?formatPrice(precisionSignal.metrics.mitigationLow)+"–"+formatPrice(precisionSignal.metrics.mitigationHigh):"WAIT"}</span>
+                    <span><b>Confirm</b>{precisionSignal.metrics.confirmation?"YES":"WAIT"}</span>
+                    <span><b>Volume</b>{precisionSignal.metrics.volumeIncreasing?"CONFIRMED":"WAIT"}</span>
+                  </>:<>
+                    <span><b>VWAP</b>{cueSignal.available?(cueSignal.metrics.aboveVwap?"ABOVE":"BELOW"):"—"}</span>
+                    <span><b>EMA20</b>{cueSignal.available?(cueSignal.metrics.aboveEma20?"ABOVE":"BELOW"):"—"}</span>
+                    <span><b>Volume</b>{cueSignal.available?(cueSignal.metrics.volumeIncreasing?"CONFIRMED":"WAIT"):"—"}</span>
+                  </>}
+                </div>
+
+                {account&&displayedCue==="BUY"&&activePlan&&!position&&
+                  <Button onClick={()=>openOrderTicket("BUY")}>Open paper BUY ticket</Button>}
+                {account&&position&&managementRead&&["EXIT","TAKE 25%","TAKE 50%"].includes(managementRead.action)&&
+                  <Button variant="destructive" onClick={()=>openOrderTicket("SELL")}>Open paper SELL ticket</Button>}
+                <p className={styles.cueDecisionFoot}>{setupEngine==="precision"
+                  ?"Precision Structure is manual paper-trading guidance only; Omega autonomous execution remains on the validated EMA20 engine. Watch plans are not entries and outcomes are not guaranteed."
+                  :"Rule-based chart plan. Levels update with fresh market structure and are not guaranteed outcomes. TradeCUE does not treat a watch plan as an entry."}</p>
+              </section>
+
+              <CueSignalCard
+                symbol={symbol}
+                timeframe="5m"
+                setupLabel={setupEngine==="precision"&&precisionSignal.available&&precisionSignal.setupType!=="NONE"
+                  ?"PRECISION "+precisionSignal.setupType
+                  :setupEngine==="precision"?"PRECISION STRUCTURE":"EMA20 PULLBACK"}
+                action={decisionAction}
+                grade={setupGrade}
+                score={selectedSignal.available?selectedSignal.score:null}
+                plan={decisionLevels}
+                mode={targetMode}
+                onModeChange={setTargetMode}
+                fresh={executionDataFresh}
+                lastPrice={executionLatest?.close}
+              />
+
+              <CueTradeAlertFeed
+                enabled={isMember}
+                symbol={symbol}
+                setupLabel={setupEngine==="precision"&&precisionSignal.available&&precisionSignal.setupType!=="NONE"
+                  ?"Precision "+precisionSignal.setupType.toLowerCase()
+                  :"EMA20 pullback"}
+                action={decisionAction}
+                plan={position?protectedLevels:activePlan}
+                lastPrice={executionLatest?.close}
+                mode={targetMode}
+                positionOpen={Boolean(position)}
+              />
+
+              {deskMode==="teach"&&<MacroRiskGuard enabled={isMember}/>}
+
+              <PaperOrderPanel enabled={Boolean(account)} accountId={accountId || account?.selectedAccountId} symbol={symbol} latestPrice={executionLatest?.close} positionQuantity={Number(position?.quantity??0)} longOnly={risk?.longOnly??true} showOrders={false}/>
+              {setupEngine==="ema20"?<ProfessorCueLive
+                symbol={symbol}
+                timeframe={timeframe}
+                signal={chartSignal}
+                action={timeframe==="5m"?displayedCue:(chartSignal.available?chartSignal.state:null)}
+                fresh={dataFresh}
+                trend={structure.trend}
+                pattern={structure.pattern}
+                structureSummary={structure.summary}
+                hasPosition={Boolean(position)}
+                alignment={intelligence.data?.alignment}
+              />:<div className={styles.professor}>
+                <BookOpen size={19}/>
+                <div>
+                  <p><strong>Professor Cue · Precision Structure:</strong> {precisionChartSignal.available?precisionChartSignal.explanation[0]:precisionChartSignal.reason}</p>
+                  {precisionChartSignal.available&&<p>{precisionChartSignal.explanation[1]} {precisionChartSignal.explanation[2]} {precisionChartSignal.explanation[3]}</p>}
+                </div>
+              </div>}
+              <details className={styles.advancedDetails}><summary>Trade plan & portfolio checks</summary>
+              <PortfolioBrainPanel
+                positions={account?.positions??[]}
+                buyingPower={Number(account?.balance.buyingPower??0)}
+                currentSymbol={symbol}
+                plannedAmount={tradeAmount}
+                maxPositions={automationControl.query.data?.maxAutoPositions??3}
+              />
+
+              <CueOperatorPanel
+                enabled={Boolean(webull.account.data)}
+                accountId={accountId || webull.account.data?.selectedAccountId}
+                symbol={symbol}
+                action={displayedCue}
+                score={selectedSignal.available?selectedSignal.score:null}
+                price={latest?.close}
+                plan={activePlan}
+                suggestedShares={planShares}
+                positionQuantity={Number(position?.quantity ?? 0)}
+                dataFresh={dataFresh}
+                structure={structure.trend+" · "+structure.pattern}
+                macroState={macroRisk.data?.state}
+                onOpenOrderTicket={openOrderTicket}
+              /></details>
+
+              {selectedSignal.available ? (
+                <>
+                  <details className={styles.advancedDetails}>
+                    <summary>Risk / profit calculator</summary>
+                  {activePlan&&<div className={styles.quickPlan}>
+                    <div className={styles.quickPlanHead}>
+                      <div><small>IF I PUT IN…</small><strong>Trade outcome preview</strong></div>
+                      <Input aria-label="Investment amount" inputMode="decimal" value={tradeAmountText} onChange={event=>setTradeAmountText(event.target.value.replace(/[^0-9.]/g,""))}/>
+                    </div>
+                    <div className={styles.amountButtons}>
+                      {[50,100,250,500,1000].map(amount=><Button key={amount} size="sm" variant={tradeAmount===amount?"secondary":"ghost"} onClick={()=>setTradeAmountText(String(amount))}>{"$"+amount}</Button>)}
+                    </div>
+                    <div className={styles.outcomeGrid}>
+                      <span><b>Shares</b><strong>{planShares||"—"}</strong></span>
+                      <span><b>Entry</b><strong>{formatPrice(activePlan.entryHigh)}</strong></span>
+                      <span><b>Stop</b><strong className={styles.negative}>{formatPrice(activePlan.stop)}</strong></span>
+                      <span><b>Risk</b><strong className={styles.negative}>{planRisk==null?"—":"-"+formatPrice(Math.max(0,planRisk))}</strong></span>
+                      <span><b>TP1 · 1:1</b><strong className={styles.positive}>{planProfit1==null?"—":"+"+formatPrice(planProfit1)}</strong></span>
+                      <span><b>TP2 · 1:{protectedR.toFixed(1)}</b><strong className={styles.positive}>{planProfit2==null?"—":"+"+formatPrice(planProfit2)}</strong></span>
+                      <span><b>TP3 · 1:3</b><strong className={styles.positive}>{planProfit3==null?"—":"+"+formatPrice(planProfit3)}</strong></span>
+                      <span><b>Plan</b><strong>{planShares>0?"50% zone / 50% confirm":"Amount too small"}</strong></span>
+                    </div>
+                    <p>Stage the entry only after confirmation; TP1 can scale out part of the position while later targets manage the remainder. Values are estimates from the current CUE plan, not guaranteed returns.</p>
+                  </div>}
+                  </details>
+
+                  <details className={styles.advancedDetails}>
+                    <summary>Deep technical score breakdown</summary>
+                    {setupEngine==="ema20"?<>
+                      <CueCheatSheet
+                        symbol={symbol}
+                        timeframe={timeframe}
+                        signal={chartSignal}
+                        action={timeframe==="5m"?displayedCue:(chartSignal.available?chartSignal.state:null)}
+                        fresh={dataFresh}
+                        hasPosition={Boolean(position)}
+                        intelligence={intelligence.data ? {
+                          compositeScore: intelligence.data.compositeScore,
+                          alignment: intelligence.data.alignment,
+                          marketChangePercent: intelligence.data.marketChangePercent,
+                          action: intelligence.data.action,
+                        } : null}
+                      />
+                      <div className={styles.scoreBreakdown}>
+                        {chartSignal.available&&Object.entries(chartSignal.componentScores).map(([name, value]) => (
+                          <div key={name}>
+                            <small>{name}</small>
+                            <strong>{value}/100</strong>
+                          </div>
+                        ))}
+                      </div>
+                      <ul>{chartSignal.available&&chartSignal.flags.slice(0,4).map(flag=><li key={flag}>{flag}</li>)}</ul>
+                    </>:precisionChartSignal.available?<>
+                      <div className={styles.precisionBreakdown}>
+                        <span><b>Setup</b><strong>{precisionChartSignal.setupType}</strong></span>
+                        <span><b>Stage</b><strong>{precisionChartSignal.stage.replaceAll("_"," ")}</strong></span>
+                        <span><b>61.8%</b><strong>{formatPrice(precisionChartSignal.metrics.fib618)}</strong></span>
+                        <span><b>78.6%</b><strong>{formatPrice(precisionChartSignal.metrics.fib786)}</strong></span>
+                        <span><b>BOS</b><strong>{formatPrice(precisionChartSignal.metrics.bosPrice)}</strong></span>
+                        <span><b>Score</b><strong>{precisionChartSignal.score}/100</strong></span>
+                      </div>
+                      <ul>{precisionChartSignal.flags.slice(0,6).map(flag=><li key={flag}>{flag}</li>)}</ul>
+                    </>:<p className={styles.decisionCopy}>{precisionChartSignal.reason}</p>}
+                  </details>
+
+                </>
+              ) : (
+                <>
+                  <h3>Signal engine waiting for data</h3>
+                  <p className={styles.decisionCopy}>{selectedSignal.reason}</p>
+                  <div className={styles.professor}>
+                    <BookOpen size={19} />
+                    <p><strong>Professor Cue:</strong> Connect Webull PaperTrade and load enough candles. TradeCUE will not invent a signal when the required inputs are unavailable.</p>
+                  </div>
+                  <Button variant="outline" onClick={() => scrollTo("professor-cue")}>Open Professor Cue</Button>
+                </>
+              )}
+            </div>
+          </section>
+
+          <Tabs value={lowerTab} onValueChange={(value)=>setLowerTab(value as typeof lowerTab)} className={styles.lowerTabs}>
+            <TabsList>
+              <TabsTrigger value="fundamentals">Fundamental Intelligence</TabsTrigger>
+              <TabsTrigger value="crypto">CueCrypto</TabsTrigger>
+              <TabsTrigger value="futures">CueFutures</TabsTrigger>
+              <TabsTrigger value="risk">Risk Firewall</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="fundamentals">
+              <div id="fundamentals">
+                {!isMember ? (
+                  <div className={styles.marketDesk}><p>Sign in to load Webull fundamentals and connected news.</p></div>
+                ) : webullFundamentals.isFetching ? (
+                  <div className={styles.marketDesk}><p>Loading Webull fundamentals for {symbol}…</p></div>
+                ) : webullFundamentals.error ? (
+                  <div className={styles.marketDesk}>
+                    <div><Newspaper size={25}/><span><small>WEBULL FUNDAMENTALS</small><strong>DATA UNAVAILABLE</strong></span><Badge variant="warning">CHECK CONNECTION</Badge></div>
+                    <p>{webullFundamentals.error.message}</p>
+                  </div>
+                ) : webullFundamentals.data ? (
+                  <div className={styles.intelligenceGrid}>
+                    <article className={styles.bigPanel}>
+                      <div className={styles.panelHead}>
+                        <div><small>WEBULL FUNDAMENTAL INTELLIGENCE</small><h3>{webullFundamentals.data.profile?.companyName || symbol}</h3></div>
+                        <Badge variant={webullFundamentals.data.bias==="POSITIVE"?"success":webullFundamentals.data.bias==="WEAK"?"destructive":"warning"}>
+                          {webullFundamentals.data.bias} {webullFundamentals.data.score ?? "—"}
+                        </Badge>
+                      </div>
+                      <div className={styles.fundamentalFacts}>
+                        <div><small>Analyst positive</small><strong>{webullFundamentals.data.analyst ? (webullFundamentals.data.analyst.strongBuy + webullFundamentals.data.analyst.buy) + "/" + webullFundamentals.data.analyst.total : "—"}</strong></div>
+                        <div><small>Analyst hold</small><strong>{webullFundamentals.data.analyst?.hold ?? "—"}</strong></div>
+                        <div><small>Mean target</small><strong>{webullFundamentals.data.target?.mean != null ? formatPrice(webullFundamentals.data.target.mean) : "—"}</strong></div>
+                        <div><small>Recent filings</small><strong>{webullFundamentals.data.filings.length}</strong></div>
+                      </div>
+                      <div className={styles.fundamentalReasons}>
+                        {webullFundamentals.data.reasons.map(reason=><span key={reason}>{reason}</span>)}
+                      </div>
+                      {webullFundamentals.data.earnings[0] && (
+                        <div className={styles.earningsStrip}>
+                          <span><b>Latest reported EPS</b>{webullFundamentals.data.earnings[0].epsActual ?? "—"} vs {webullFundamentals.data.earnings[0].epsEstimate ?? "—"} est.</span>
+                          <span><b>Revenue</b>{webullFundamentals.data.earnings[0].revenueActual != null ? compactMoney(webullFundamentals.data.earnings[0].revenueActual) : "—"}</span>
+                          <span><b>Sector / industry</b>{webullFundamentals.data.profile?.sector ?? "—"}</span>
+                        </div>
+                      )}
+                      <div className={styles.deepFundamentals}>
+                        <span><b>Large-order flow</b><strong className={(webullFundamentals.data.capitalFlow?.largeNet??0)>=0?styles.positive:styles.negative}>{compactMoney(webullFundamentals.data.capitalFlow?.largeNet)}</strong><small>{webullFundamentals.data.capitalFlow?.date ?? "—"}</small></span>
+                        <span><b>Net margin</b><strong>{metricPercent(webullFundamentals.data.indicators?.netMargin)}</strong><small>Latest Webull indicator</small></span>
+                        <span><b>ROE</b><strong>{metricPercent(webullFundamentals.data.indicators?.roe)}</strong><small>Return on equity</small></span>
+                        <span><b>Debt / assets</b><strong>{metricPercent(webullFundamentals.data.indicators?.debtToAssets)}</strong><small>Latest reported period</small></span>
+                        <span><b>Next earnings</b><strong>{webullFundamentals.data.nextEarnings?.startDate ?? "—"}</strong><small>EPS est. {webullFundamentals.data.nextEarnings?.epsEstimate ?? "—"}</small></span>
+                        <span><b>OCF / share</b><strong>{webullFundamentals.data.indicators?.operatingCashFlowPerShare?.toFixed(2) ?? "—"}</strong><small>Operating cash flow</small></span>
+                      </div>
+                      <p><strong>Professor Cue:</strong> Fundamentals are context, not an automatic entry. A strong company can still be a bad buy if price is extended or the technical setup is weak.</p>
+                    </article>
+
+                    <article className={styles.newsList}>
+                      <div className={styles.newsHead}><h3>SEC filings</h3><Badge variant="outline">WEBULL</Badge></div>
+                      {webullFundamentals.data.filings.slice(0,6).map((filing,index)=>(
+                        <div key={filing.title+index}>
+                          <span>SEC</span><strong>{filing.title}</strong><em>{filing.publishDate??"Filing"}</em>
+                        </div>
+                      ))}
+                      {!webullFundamentals.data.filings.length&&<p>No recent filing returned for {symbol}.</p>}
+                    </article>
+                  </div>
+                ) : null}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="crypto">
+              <div className={styles.marketDesk}>
+                <div><Link2 size={25} /><span><small>CUECRYPTO</small><strong>CONNECTION REQUIRED</strong></span><Badge variant="warning">NOT ACTIVE</Badge></div>
+                <p>No crypto price, signal, or portfolio data is being simulated. A supported crypto data/broker connection must be added first.</p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="futures">
+              <div className={styles.marketDesk}>
+                <div><Link2 size={25} /><span><small>CUEFUTURES</small><strong>TRADOVATE CONNECTION REQUIRED</strong></span><Badge variant="warning">NOT ACTIVE</Badge></div>
+                <p>Futures market data, DOM, margin, and order controls remain disabled until Tradovate credentials and permissions are connected.</p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="risk">
+              <div id="risk">
+                <div className={styles.riskDesk}>
+                  <div><small>Max risk / trade</small><strong>{risk ? money(risk.maxRiskPerTrade) : "—"}</strong></div>
+                  <div><small>Max daily loss</small><strong>{risk ? money(risk.maxDailyLoss) : "—"}</strong></div>
+                  <div><small>Max trades</small><strong>{risk?.maxTradesPerDay ?? "—"}</strong></div>
+                  <div><small>Long only</small><strong className={risk?.longOnly ? styles.positive : undefined}>{risk ? risk.longOnly ? "ON" : "OFF" : "—"}</strong></div>
+                  <div><small>No chase</small><strong className={risk?.noChaseEnabled ? styles.positive : undefined}>{risk ? risk.noChaseEnabled ? "ON" : "OFF" : "—"}</strong></div>
+                  <div><small>Day-trade flat time</small><strong>{risk?.dayTradeFlatTimePt ?? "—"}</strong></div>
+                </div>
+                <TradePlanner
+                  accountEquity={account?.balance.equity}
+                  entry={executionLatest?.close}
+                  suggestedStop={selectedSignal.available && executionDataFresh && ["BUY","HOLD"].includes(displayedCue ?? "") ? selectedSignal.plan?.stop : undefined}
+                  suggestedTarget={selectedSignal.available && executionDataFresh && ["BUY","HOLD"].includes(displayedCue ?? "") ? selectedSignal.plan?.target2 : undefined}
+                  maxRiskPerTrade={risk?.maxRiskPerTrade}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className={styles.bottomOrders}><PaperOrderPanel enabled={Boolean(account)} accountId={accountId || account?.selectedAccountId} symbol={symbol} latestPrice={executionLatest?.close} positionQuantity={Number(position?.quantity??0)} longOnly={risk?.longOnly??true}/></div>
+          <CueJournalPanel enabled={isMember}/>
+          <CueLearningPanel enabled={isMember}/>
+          <ReliabilityCenter enabled={isMember}/>
+          <CueLabPanel bars={chartBars} symbol={symbol} timeframe={timeframe}/>
+          <CueFuturesPanel enabled={isMember}/>
+          <FundedRiskPanel/>
+
+        </main>
+      </div>
+    </div>
+  );
+}
+
