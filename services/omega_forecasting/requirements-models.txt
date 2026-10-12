@@ -1,0 +1,9 @@
+# OPTIONAL heavyweight dependencies. Install only on a dedicated, secured CPU/GPU worker.
+# Pin tested exact versions before production use.
+chronos-forecasting
+numpy
+pandas
+torch
+neuralforecast
+# Kronos is not provided as a pip dependency. Install the reviewed, appropriately licensed
+# upstream shiyu-coder/Kronos source in a separate environment and expose its model package.
