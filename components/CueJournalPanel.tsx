@@ -13,6 +13,30 @@ function when(value:string|null|undefined){
   return new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(value));
 }
 function pnlClass(value:number|null|undefined){return value==null?undefined:value>=0?styles.win:styles.loss;}
+function startOfWeek(date=new Date()){
+  const d=new Date(date);
+  const day=d.getDay();
+  const diff=day===0?6:day-1;
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate()-diff);
+  return d;
+}
+function shortDate(value:Date){return new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric"}).format(value);}
+function bestSetup(rows:Array<{setup:string;realizedPnl:number|null}>){
+  const sums=new Map<string,number>();
+  for(const row of rows)sums.set(row.setup,(sums.get(row.setup)??0)+(row.realizedPnl??0));
+  return [...sums.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]??"—";
+}
+function bestHour(rows:Array<{entryTime:string;realizedPnl:number|null}>){
+  const sums=new Map<number,number>();
+  for(const row of rows){
+    const hour=new Date(row.entryTime).getHours();
+    sums.set(hour,(sums.get(hour)??0)+(row.realizedPnl??0));
+  }
+  const hour=[...sums.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0];
+  if(hour==null)return "—";
+  return new Intl.DateTimeFormat("en-US",{hour:"numeric",hour12:true}).format(new Date(2026,0,1,hour));
+}
 
 export function CueJournalPanel({enabled}:{enabled:boolean}){
   const journal=useCueJournal(enabled);
@@ -24,6 +48,19 @@ export function CueJournalPanel({enabled}:{enabled:boolean}){
   const realized=resolved.reduce((sum,row)=>sum+(row.realizedPnl??0),0);
   const wins=resolved.filter(row=>(row.realizedPnl??0)>0).length;
   const winRate=resolved.length?wins/resolved.length*100:null;
+
+  const weekStart=startOfWeek();
+  const weekEnd=new Date(weekStart);weekEnd.setDate(weekEnd.getDate()+6);
+  const weekly=resolved.filter(row=>row.exitTime&&new Date(row.exitTime)>=weekStart);
+  const weeklyWins=weekly.filter(row=>(row.realizedPnl??0)>0);
+  const weeklyLosses=weekly.filter(row=>(row.realizedPnl??0)<0);
+  const weeklyGrossWins=weeklyWins.reduce((sum,row)=>sum+(row.realizedPnl??0),0);
+  const weeklyGrossLosses=Math.abs(weeklyLosses.reduce((sum,row)=>sum+(row.realizedPnl??0),0));
+  const weeklyNet=weeklyGrossWins-weeklyGrossLosses;
+  const weeklyWinRate=weekly.length?weeklyWins.length/weekly.length*100:null;
+  const weeklyProfitFactor=weeklyGrossLosses>0?weeklyGrossWins/weeklyGrossLosses:weeklyGrossWins>0?999:null;
+  const weeklyAvgWinner=weeklyWins.length?weeklyGrossWins/weeklyWins.length:null;
+  const weeklyAvgLoser=weeklyLosses.length?weeklyLosses.reduce((sum,row)=>sum+(row.realizedPnl??0),0)/weeklyLosses.length:null;
 
   return <section className={styles.panel} id="journal">
     <div className={styles.head}>
@@ -40,6 +77,25 @@ export function CueJournalPanel({enabled}:{enabled:boolean}){
       <span><small>Win rate</small><strong>{winRate==null?"—":winRate.toFixed(1)+"%"}</strong></span>
       <span><small>Realized P&L</small><strong className={pnlClass(realized)}>{money(realized)}</strong></span>
     </div>
+
+    <article className={styles.weekly}>
+      <div className={styles.weeklyHead}>
+        <div><small>OMEGA WEEKLY SCORECARD</small><h3>{shortDate(weekStart)} – {shortDate(weekEnd)}</h3><p>Confirmed paper fills only. No submitted order is counted as a win.</p></div>
+        <Badge variant={weeklyNet>=0?"success":"destructive"}>{weekly.length} CLOSED TRADES</Badge>
+      </div>
+      <div className={styles.weeklyGrid}>
+        <span><b>Wins / losses</b><strong>{weeklyWins.length} / {weeklyLosses.length}</strong></span>
+        <span><b>Win rate</b><strong>{weeklyWinRate==null?"—":weeklyWinRate.toFixed(1)+"%"}</strong></span>
+        <span><b>Gross wins</b><strong className={styles.win}>{money(weeklyGrossWins)}</strong></span>
+        <span><b>Gross losses</b><strong className={styles.loss}>{weeklyGrossLosses?money(-weeklyGrossLosses):money(0)}</strong></span>
+        <span><b>Net P&L</b><strong className={pnlClass(weeklyNet)}>{money(weeklyNet)}</strong></span>
+        <span><b>Profit factor</b><strong>{weeklyProfitFactor==null?"—":weeklyProfitFactor>=999?"∞":weeklyProfitFactor.toFixed(2)}</strong></span>
+        <span><b>Avg winner</b><strong className={styles.win}>{money(weeklyAvgWinner)}</strong></span>
+        <span><b>Avg loser</b><strong className={styles.loss}>{money(weeklyAvgLoser)}</strong></span>
+        <span><b>Best setup</b><strong>{weekly.length?bestSetup(weekly):"—"}</strong></span>
+        <span><b>Best entry hour</b><strong>{weekly.length?bestHour(weekly):"—"}</strong></span>
+      </div>
+    </article>
 
     <div className={styles.syncLine}>
       {journal.sync.isFetching?"Syncing confirmed Webull fills…":journal.sync.data?"Last broker sync: "+when(journal.sync.data.syncedAt):"Broker sync pending"}
@@ -85,3 +141,4 @@ export function CueJournalPanel({enabled}:{enabled:boolean}){
     <div className={styles.note}><BookOpen size={16}/><span>Use this screen as the truth source. Submitted orders are not counted as profits; performance requires confirmed fills and paired exits.</span></div>
   </section>;
 }
+  144
